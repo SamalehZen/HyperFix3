@@ -165,7 +165,7 @@ class WorkflowSubagentRunner:
             "timezone": user_timezone,
         }
 
-        config = build_agent_config(
+        config = await build_agent_config(
             conversation_id=thread_id,
             user=user,
             thread_id=subagent_thread_id,

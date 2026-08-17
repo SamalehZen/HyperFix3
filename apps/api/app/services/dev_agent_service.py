@@ -20,6 +20,7 @@ from app.agents.core.subagents.subagent_runner import (
     execute_subagent_stream,
     prepare_executor_execution,
 )
+from app.agents.llm.lane import AgentRole
 from app.constants.log_tags import LogTag
 from app.helpers.agent_helpers import build_agent_config
 from app.models.agent_models import AgentConfigurable, AgentUserContext
@@ -61,10 +62,14 @@ async def _dev_base_configurable(
         "name": user_doc.name,
     }
     user_preferences, writing_style = onboarding_preferences(user_doc.onboarding)
-    config = build_agent_config(
+    config = await build_agent_config(
         conversation_id=cid,
         user=user,
         agent_name=agent_name,
+        # A direct dev run is top-level, so it resolves its own lane. Before
+        # this it resolved none at all, which is why the dev harness quietly
+        # ran a different model than real chat.
+        role=AgentRole.EXECUTOR,
         user_preferences=user_preferences,
         writing_style=writing_style,
     )

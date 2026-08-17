@@ -479,7 +479,7 @@ async def prepare_subagent_execution(
         "name": configurable.get("user_name"),
     }
 
-    subagent_config = build_agent_config(
+    subagent_config = await build_agent_config(
         conversation_id=thread_id,
         user=user,
         thread_id=subagent_thread_id,
@@ -663,7 +663,7 @@ async def resume_parked_subagent(
         "email": configurable.get("email"),
         "name": configurable.get("user_name"),
     }
-    subagent_config = build_agent_config(
+    subagent_config = await build_agent_config(
         conversation_id=record.conversation_id,
         user=user,
         thread_id=record.subagent_thread_id,

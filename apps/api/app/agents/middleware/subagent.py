@@ -318,7 +318,7 @@ class SubagentMiddleware(AgentMiddleware[SubagentState, Any]):
         # stale; the conversation uuid keeps them collectable with the conversation.
         thread_id = f"{SPAWN_THREAD_PREFIX}{conversation_id}_{tool_call_id}"
 
-        spawn_config = build_agent_config(
+        spawn_config = await build_agent_config(
             conversation_id=conversation_id,
             user={
                 "user_id": user_id,
