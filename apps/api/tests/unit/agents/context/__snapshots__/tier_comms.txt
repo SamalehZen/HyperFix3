@@ -556,11 +556,13 @@
     User Profession: Engineer
     Connected integrations (hand off to the matching subagent to use them):
     - Gmail (gmail)
-
-[2] system markers=memory_recall
     What you remember about this user (memory core):
     - Prefers short answers.
-    
+
+[2] human
+    summarise my unread mail
+
+[3] system markers=memory_recall
     Based on our previous conversations (bracketed dates say when something happened / was last mentioned):
     - Ships on Fridays [mentioned 2026-02-01]
     
@@ -568,9 +570,6 @@
     - GAIA can run scheduled workflows.
     
     Tracked: ship the context refactor
-
-[3] human
-    summarise my unread mail
 
 [4] human markers=time_context
     [Current UTC Time: Tuesday, March 17, 2026, 14:30 UTC]

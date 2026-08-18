@@ -129,6 +129,27 @@ TOOL_TIMEOUT_EXEMPT_TOOLS = frozenset(
 # to the default model (see with_llm_retry in app/agents/llm/client.py).
 LLM_RETRY_MAX_ATTEMPTS = 3
 
+# Sticky-flip retry: when a large call's cache read is below this fraction of
+# its prompt (the request landed on a cold provider after the ~5-minute sticky
+# expiry — a known OpenRouter behavior), re-send it once — the first attempt
+# wrote the chain there and the re-send hits it (~99%, verified by byte-exact
+# shadow replays of captured requests: 99.2-99.7%). 0.92 catches the full
+# flips (0-5%), the partial static-only dips (65-75%) AND the small-
+# conversation steady state (83-90% — the provider under-reads the fresh
+# chain for a few turns after a big turn; measured live at 83.8% flat while
+# the exact bytes replay at 99.7%). The retry's second call reads ~99% cached,
+# so the turn's aggregate hit rises toward (cached + 0.99*input)/2*input while
+# the extra input bills at the cached-read rate.
+STICKY_FLIP_RETRY_MIN_HIT = 0.92
+STICKY_FLIP_RETRY_MIN_INPUT = 8_000
+# The replay's premise — sticky routing that re-reads the chain the first
+# attempt wrote — is OpenRouter-wire behaviour. Gemini has no sticky routing,
+# so a replay there is a second full-price call with no possible upside.
+STICKY_ROUTING_PROVIDERS = frozenset({LLMProviderName.OPENROUTER, LLMProviderName.CUSTOM})
+# Auxiliary one-shots route on their own sticky session: sharing the
+# conversation's key re-pinned its provider from a background call (measured).
+AUX_SESSION_SUFFIX = "-aux"
+
 # Total wall-clock ceiling for one ainvoke_llm call — retries, backoff sleeps and the
 # fallback attempt included. A backstop against a provider that accepts the connection
 # and then never answers, which no retry can rescue because nothing ever raises.
@@ -137,7 +158,7 @@ LLM_RETRY_MAX_ATTEMPTS = 3
 # document analysis), NOT as a per-caller latency budget: a call on a user-blocking path
 # should pass its own tighter value, the way the HIL gate passes
 # HIL_LLM_TIMEOUT_SECONDS. Pass timeout=None to opt out entirely.
-LLM_INVOKE_TIMEOUT_SECONDS = 120
+LLM_INVOKE_TIMEOUT_SECONDS = 300
 
 # Near-deterministic default for every LLM call; creative tasks opt into more
 # variation via get_default_llm(temperature=...).
@@ -163,9 +184,48 @@ DEFAULT_MAX_TOKENS = 1_000_000
 # Text-only: tool results carrying images are captioned for it rather than shown
 # (see agents/llm/vision/capability.py).
 DEFAULT_MODEL_NAME = "deepseek/deepseek-v4-flash-0731"
+# Stand-in when a call reports no model id. Priced at DEFAULT_PRICING rather
+# than its real rate, so its appearance is an alertable bug, not a benign
+# default — both metering routes log it loudly.
+UNKNOWN_MODEL_NAME = "unknown"
+# No explicit provider routing for the default DeepSeek lane: OpenRouter's
+# default (price- and availability-weighted) routing + the session_id sticky
+# key on every request measured BEST on the real full graph (82.2% total,
+# 83-88% steady-state). The first-party `only` pin was measured WORSE on the
+# real graph (64-66%: the pinned upstream's cache state is colder and the
+# conversation's segments still intermittently fail to join), even though it
+# is rock-stable in isolation — the isolation is not the graph.
+# A separate id for the auxiliary one-shot calls (memory pipeline, follow-ups,
+# vision, …). This is NOT the same model as the default: OpenRouter serves the
+# bare id as the ORIGINAL V4 Flash release ("0423", created Apr 2026), while
+# DEFAULT_MODEL_NAME is the re-post-trained "0731" revision (Aug 2026) — same
+# architecture family (284B/13B-active MoE, 1M context), different model
+# version — and NOT the same rate card. Aux one-shots (follow-up suggestions, conversation
+# naming) are therefore served by the older revision — a deliberate tradeoff:
+# the separate model id is what gives these calls their own provider-side
+# cache namespace. They must NOT share the conversation's namespace — their
+# ~30k tokens/turn of new blocks were evicting the conversation chain between
+# turns (measured: real-graph hit rate capped at ~63% while the intra-turn
+# steady state is 87–91%). A separate id lets the aux calls chain with each
+# other and stops the eviction. This id is priced SEPARATELY from the default
+# — see AUX_MODEL_PRICING, which is what meters it, and which is hand-written
+# here rather than seeded because the id is an internal routing choice, not a
+# model users can select. Nothing reconciles it against OpenRouter's live
+# listing, so it has to be re-checked by hand whenever either id is re-pointed.
+AUX_MODEL_NAME = "deepseek/deepseek-v4-flash"
 # Retained for the direct-Gemini lane, which is still selectable as a provider
 # alternative and in the dev model menu — it is no longer the default.
 DEFAULT_GEMINI_MODEL_NAME = "gemini-3.1-flash-lite"
+
+# The model behind every memory-pipeline call (extraction / categorization /
+# reconciliation / consolidation). Deliberately a DIFFERENT provider than the
+# graph's lane: the memory extraction is a background task that overlaps the
+# next turn's requests, and concurrent requests on the same provider's cache
+# store wipe each other's cached chains mid-read (measured: the comms chain
+# collapses to ~0 under a concurrent same-provider extraction and holds
+# ~99.5% under a concurrent Gemini extraction). A different provider has no
+# shared cache store, so the overlap is harmless.
+MEMORY_MODEL_NAME = DEFAULT_GEMINI_MODEL_NAME
 DEFAULT_GROK_MODEL_NAME = "x-ai/grok-4.3"
 
 # The model behind every image -> text call: the vision fallback for a lane that
@@ -227,14 +287,6 @@ HELPER_MAX_OUTPUT_TOKENS = 8_000
 # Default reasoning effort for OpenRouter thinking models (executor + subagents),
 # passed to ChatOpenRouter's native `reasoning` field.
 OPENROUTER_REASONING: dict[str, Any] = {"effort": "medium"}
-# Pin the paid model to the first-party "z-ai" provider on OpenRouter. Without
-# this, OpenRouter may load-balance z-ai/glm-5.2 across resellers (DeepInfra,
-# Together, Parasail, etc.) whose shared pools get rate-limited upstream (429). `only`
-# forces the first-party lane. Passed via ChatOpenRouter's `model_kwargs` (the
-# OpenRouter `provider` routing param) and inherited by child agents via
-# agent_helpers._inherit_from_parent_configurable so subagents stay on the same lane.
-PAID_MODEL_PROVIDER_SLUG = "deepseek"
-PAID_MODEL_MODEL_KWARGS = {"provider": {"only": [PAID_MODEL_PROVIDER_SLUG]}}
 # Comms-specific reasoning: "low" instead of the executor's "medium". Comms is
 # mostly routing/ack work, so the reasoning budget is most useful for the executor's
 # tool selection. GLM 5.2 also documents "high"/"xhigh" efforts — revisit these
@@ -292,6 +344,8 @@ DEV_MODEL_OPTIONS: dict[str, DevModelOption] = {
         # identical model for A/B-ing routes.
         "provider": LLMProviderName.OPENROUTER,
         "model": "deepseek/deepseek-v4-flash-0731",
+        # Deliberately unpinned — the pin measured worse on the real graph
+        # (see the paid-lane rationale above).
         "model_kwargs": None,
         "reasoning": False,
     },

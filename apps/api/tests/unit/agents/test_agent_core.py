@@ -1034,6 +1034,11 @@ class TestTheLaneTheRunResolves:
                 return_value=_fresh_config(),
             ) as build_config,
             patches["log"],
+            # Pinned, as the dev-selector classes below already do: the dev model
+            # menu is live only in development, and a developer's own .env sets
+            # ENV=development — so an unpinned run resolves DEV_DEFAULT_MODEL and
+            # this expectation holds in CI and nowhere else.
+            patch.object(agent_module.settings, "ENV", "production"),
         ):
             await _core_agent_logic(
                 request=request,

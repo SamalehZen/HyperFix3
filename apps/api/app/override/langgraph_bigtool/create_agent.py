@@ -67,6 +67,7 @@ from app.constants.llm import (
     LANE_FIELD_ID,
     MAX_COMPLETION_NUDGES,
     RECURSION_WRAPUP_THRESHOLD_STEPS,
+    STICKY_ROUTING_PROVIDERS,
 )
 from app.models.agent_models import AgentConfigurable, agent_configurable
 from app.override.langgraph_bigtool.dynamic_tool_node import (
@@ -126,6 +127,21 @@ def _prepare_fallback(
     # tool-binding chat model, LanguageModelLike just doesn't declare bind_tools.
     bindable = cast(BaseChatModel, llm)
     return (lambda: bindable.bind_tools(tools_to_bind), fallback_lane)
+
+
+def _bind_session_id(llm_with_tools: Runnable, model_configurations: AgentConfigurable) -> Runnable:
+    """Bind the sticky-routing session id onto ``llm_with_tools``, if applicable."""
+    # Must run AFTER bind_tools (which rebuilds the runnable and drops outer bindings), so the
+    # call pins to the conversation's provider and its prompt cache chains across turns.
+    # Gated on the provider the same way ainvoke_llm gates it: session_id is an
+    # OpenRouter routing hint, and Gemini has no stickiness to pin, so sending
+    # it there is an unsupported argument on every graph call.
+    if model_configurations.get("provider") not in STICKY_ROUTING_PROVIDERS:
+        return llm_with_tools
+    session_id = model_configurations.get("session_id")
+    if session_id:
+        return llm_with_tools.bind(session_id=session_id)
+    return llm_with_tools
 
 
 def create_agent(
@@ -249,6 +265,7 @@ def create_agent(
         model_configurations = agent_configurable(config)
         tools_to_bind = build_tools_to_bind(state)
         llm_with_tools = _llm.bind_tools(tools_to_bind)  # type: ignore[attr-defined]
+        llm_with_tools = _bind_session_id(llm_with_tools, model_configurations)
         prepared = _prepare_fallback(llm, tools_to_bind, model_configurations)
         state = _maybe_inject_wrapup(state)
         response = invoke_llm(
@@ -305,6 +322,7 @@ def create_agent(
 
         tools_to_bind = build_tools_to_bind(state)
         llm_with_tools = _llm.bind_tools(tools_to_bind)  # type: ignore[attr-defined]
+        llm_with_tools = _bind_session_id(llm_with_tools, model_configurations)
         prepared = _prepare_fallback(llm, tools_to_bind, model_configurations)
         # LLMAccountingMiddleware already charges this call; auxiliary metering
         # here would book it a second time.

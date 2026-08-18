@@ -8,8 +8,11 @@ instead of silently making them lie.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import patch
 
 from langchain.agents.middleware.types import ToolCallRequest
 from langchain.tools import ToolRuntime
@@ -81,6 +84,18 @@ async def _wrap(mw: LoopGuardMiddleware, request: ToolCallRequest, handler: Any)
 async def _run(mw: LoopGuardMiddleware, times: int, **kwargs: Any) -> list[ToolMessage]:
     """Drive `times` identical failing calls and return every result."""
     return [await _wrap(mw, _request(**kwargs), _failing()) for _ in range(times)]
+
+
+@contextmanager
+def _captured_warnings() -> Iterator[list[tuple[str, dict[str, Any]]]]:
+    """Capture the guard's wide-event warnings as (message, kwargs) pairs."""
+    warnings: list[tuple[str, dict[str, Any]]] = []
+
+    def _record(message: str, **kwargs: Any) -> None:
+        warnings.append((message, kwargs))
+
+    with patch.object(log, "warning", _record):
+        yield warnings
 
 
 # --- warn escalation: identical arguments ------------------------------------ #

@@ -33,7 +33,6 @@ from app.constants.llm import (
     MODEL_KWARGS_FIELD_ID,
     MONTHLY_BUDGET_TTL_SECONDS,
     OPENROUTER_REASONING,
-    PAID_MODEL_MODEL_KWARGS,
     PAID_MODEL_NAME,
     PAID_MODEL_PROVIDER,
     PRO_MONTHLY_COST_BUDGET_USD,
@@ -205,14 +204,12 @@ def _dev_lane(option: DevModelOption, role: AgentRole) -> ModelLane:
     """A lane pinned from the DEV-ONLY model menu.
 
     An entry may carry no model (the env-defined "custom" endpoint), in which
-    case the lane resolves the SAME name the client would have used on its own —
-    ``PROVIDER_MODELS[provider]``, read once at import from ``DEV_LLM_MODEL``. It
-    changes nothing about which model runs, and it is what keeps the name visible
-    to accounting: a lane with no model prices the call as "unknown", which falls
-    through to DEFAULT_PRICING (~11x our default model's real rate) and
-    undercharges the budget. Left ``None`` only when the lane genuinely has no
-    resolved name — the custom endpoint is unconfigured — since pinning a
-    placeholder would price the call against a model that does not exist.
+    case the client binds ``PROVIDER_MODELS[provider]`` (``DEV_LLM_MODEL``) as
+    its own default. The lane resolves that same value rather than leaving the
+    model ``None``: it changes nothing about which model runs, and it keeps the
+    resolved name visible to accounting instead of metering the turn at
+    DEFAULT_PRICING as "unknown". ``None`` survives only when the env var itself
+    is unset, since then the model is genuinely unknown ahead of the call.
 
     Non-reasoning models get no reasoning config at all rather than an inherited
     one, so a prior OpenRouter pin cannot leak onto a Gemini-routed model.
@@ -271,9 +268,9 @@ async def resolve_lane(
     """The single place a model is chosen. Returns the lane and the plan tier it
     was resolved from (``None`` when there is no user to resolve one for).
 
-    Free runs the default model; every paid tier gets the paid model and the
-    first-party provider pin, so a new paid plan is covered without touching
-    this. A paid user whose monthly spend has crossed the economic guard is
+    Free runs the default model; every paid tier gets the paid model, so a new
+    paid plan is covered without touching this. A paid user whose monthly spend
+    has crossed the economic guard is
     degraded to the free lane rather than blocked — a paying user is never
     hard-walled mid-month, and every other pro entitlement stays intact.
 
@@ -310,7 +307,13 @@ async def resolve_lane(
             provider=LLMProviderName(PAID_MODEL_PROVIDER),
             model=PAID_MODEL_NAME,
             reasoning=_reasoning_for(role, paid=True),
-            provider_pin=PAID_MODEL_MODEL_KWARGS,
+            # No routing pin, deliberately. The session_id key on every request
+            # forces OpenRouter's sticky routing, which keeps a conversation on
+            # the provider holding its warm prompt cache; an explicit `only`
+            # pin conflicted with that and measured WORSE (64% cache hits vs
+            # 83-91% per turn without it). See the DEFAULT_MODEL_NAME note in
+            # constants/llm.py for the measurements.
+            provider_pin=None,
             max_input_tokens=DEFAULT_MAX_TOKENS,
         ),
         plan,

@@ -84,6 +84,13 @@ os.environ["LANGFUSE_HOST"] = ""
 # chroma_store came back "suspicious" and the module could never be graded.
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
+# HOST leaks into the model's context: fetchers.py renders the public artifact
+# URL from it, so the effective prompt — and the recorded context snapshots —
+# differ between a dev box with apps/api/.env (localhost) and CI without one
+# (the production default). Pinned so the rendered context is the same
+# everywhere; the snapshots were recorded against this value.
+os.environ["HOST"] = "http://localhost:8000"
+
 # Same reasoning for PostHog: analytics capture must never reach a live
 # project from the suite. Forced off (not setdefault) BEFORE the settings
 # import below — the provider's required_keys are bound at decoration time

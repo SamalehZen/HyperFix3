@@ -47,3 +47,8 @@ MEMORY_RECALL_HEADER = (
 CORE_MEMORY_HEADER = "What you remember about this user (memory core):"
 
 GAIA_KNOWLEDGE_HEADER = "About Gaia (your identity and capabilities):"
+
+#: Tells the model its view is partial when the volatile block overruns the
+#: ceiling in ``assemble``. Fixed text, so the notice does not itself grow with
+#: the content it stands in for.
+VOLATILE_BLOCK_TRUNC_MARKER = "\n…[context truncated to bound prompt size]…\n"

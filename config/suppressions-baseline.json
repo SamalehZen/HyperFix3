@@ -28,7 +28,7 @@
       "path": "apps/api/app/agents/llm/client.py",
       "kind": "type-ignore",
       "count": 1,
-      "hash": "763e88aba0dfb0145d364b49798caec1bbe5457710825ac6565a72befb9f2119"
+      "hash": "9b7a79f23e8bb4e5913df8133844f004804785a631b7579aad2f2f968092eacf"
     },
     {
       "path": "apps/api/app/agents/middleware/runtime_adapter.py",
@@ -100,7 +100,7 @@
       "path": "apps/api/app/override/langgraph_bigtool/create_agent.py",
       "kind": "type-ignore",
       "count": 16,
-      "hash": "6f87a0f5ecdb3ee95ad04623dee445aa94bca28312c17295fc235c359d122565"
+      "hash": "1aeddb2e8805b4e775f8003f716c21d40d97b8954bad5bd55988bf766862bba5"
     },
     {
       "path": "apps/api/app/override/langgraph_bigtool/hooks.py",
@@ -196,7 +196,7 @@
       "path": "apps/api/tests/helpers.py",
       "kind": "type-ignore",
       "count": 2,
-      "hash": "37d0eb534a9c3a6cbba970b2684db5e60716ce1cea552fb3d1b4b64a377e88f1"
+      "hash": "9cec3b81b3c22fcde68971da48ef5b088382f763b2cde2bb68ccb4708ae3e50a"
     },
     {
       "path": "apps/api/tests/integration/agents/test_real_comms_agent.py",
@@ -232,7 +232,7 @@
       "path": "apps/api/tests/unit/agents/test_agent_core.py",
       "kind": "type-ignore",
       "count": 1,
-      "hash": "3282346397b46c5e38bc509ac229743252203150edebfc2766f2c480907ba628"
+      "hash": "821b7bc0f35049c620381af62cec9ce49d766692f81c9c618f1c847c906cfbfc"
     },
     {
       "path": "apps/api/tests/unit/agents/test_handoff_tools.py",
@@ -244,7 +244,7 @@
       "path": "apps/api/tests/unit/agents/test_llm_client.py",
       "kind": "type-ignore",
       "count": 2,
-      "hash": "b1efb3acd0f6b3c4492c803dc20104f766413bf894f2c4b113a5277819dcd2c7"
+      "hash": "857c29206c88f49ee8a68ffeb065fd74ee6d200500c1f98d60a327fac98db9bf"
     },
     {
       "path": "apps/api/tests/unit/agents/test_middleware_executor.py",
@@ -352,7 +352,7 @@
       "path": "apps/api/tests/unit/override/test_langgraph_bigtool.py",
       "kind": "type-ignore",
       "count": 21,
-      "hash": "d1e45e1298a572db7dbf9f9feec0e98bbe659086921673dbe00e008fb288cb01"
+      "hash": "184e20050097c8b2447f49e626fb71db079500b31ac0313122e8ed4d46f167d5"
     },
     {
       "path": "apps/api/tests/unit/patches/test_composio_langchain_patch.py",
@@ -466,7 +466,7 @@
       "path": "apps/api/tests/unit/utils/test_file_utils.py",
       "kind": "type-ignore",
       "count": 8,
-      "hash": "7cdc05855ba1e530e8fb16a0cfb90b122b4dc5a4068fb338a10f9683d058d68b"
+      "hash": "7eaf9b8b2508790520100aeab7aa9fd85539e48b703814a90cac85795613157b"
     },
     {
       "path": "apps/api/tests/unit/utils/test_internet_utils.py",
