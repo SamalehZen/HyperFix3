@@ -32,6 +32,16 @@ os.environ["ENV"] = "development"
 # prod-guard off, and because the key is now present, load_dotenv(override=False)
 # — called at settings import — will not re-inject a value from the developer's .env.
 os.environ["DEV_AUTH_BYPASS_EMAIL"] = ""
+# Same problem, same fix, for the other dev overrides that change behaviour
+# rather than carry a secret — the credential fence below never sees them
+# because they are not credential-shaped, and it would run too late anyway:
+# get_settings() is lru_cached and already resolved during collection.
+# DEV_UNLIMITED_RATE_LIMITS lifts the limits the rate-limiter tests assert (11
+# false failures on a machine that sets it); GAIA_SIM_MODE routes every LLM
+# call to the local stub. Both are typed `bool`, so the neutral value must be
+# parseable — "" is a pydantic bool_parsing error, not an "off".
+os.environ["DEV_UNLIMITED_RATE_LIMITS"] = "false"
+os.environ["GAIA_SIM_MODE"] = "false"
 os.environ.setdefault(
     "MONGO_DB",
     "mongodb://localhost:27017/gaia_test?serverSelectionTimeoutMS=100&connectTimeoutMS=100",
@@ -65,6 +75,14 @@ os.environ["LANGCHAIN_TRACING_V2"] = "false"
 os.environ["LANGFUSE_PUBLIC_KEY"] = ""
 os.environ["LANGFUSE_SECRET_KEY"] = ""
 os.environ["LANGFUSE_HOST"] = ""
+
+# chromadb phones home on every client start and collection create, and its
+# telemetry client is a background thread doing network I/O. Beyond being an
+# external call the suite never asserts on, that thread is what makes the
+# process fork-hostile: mutmut re-runs a test file inside a fork, and the
+# child died on SIGTRAP (exit -5) before writing a byte, so every mutant of
+# chroma_store came back "suspicious" and the module could never be graded.
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
 # Arm the Infisical fence BEFORE any app import: settings.py calls get_settings()
 # at import time (via the module-level `settings` singleton), and the import

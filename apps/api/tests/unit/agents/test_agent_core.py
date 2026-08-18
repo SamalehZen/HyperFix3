@@ -341,6 +341,83 @@ class TestCallAgent:
             assert "stream_id" not in passed_config["configurable"]
 
     @pytest.mark.asyncio
+    async def test_bot_message_id_added_to_config(self):
+        """A HIL pause on this turn's executor resumes onto this SAME bot message.
+        Losing the id there mints a rival message and the user watches the wrong
+        one."""
+
+        async def _fake_stream(*args, **kwargs):
+            yield "data: [DONE]\n\n"
+
+        patches = _common_patches()
+        with (
+            patches["construct"],
+            patches["get_graph"],
+            patches["build_state"],
+            patch(
+                "app.agents.core.agent.build_agent_config",
+                new_callable=AsyncMock,
+                return_value={
+                    "configurable": {
+                        "thread_id": "conv-1",
+                        "user_id": "user-123",
+                        "model_name": "gpt-4o",
+                    }
+                },
+            ),
+            patches["log"],
+            patch(
+                "app.agents.core.agent.execute_graph_streaming",
+                return_value=_fake_stream(),
+            ) as mock_exec,
+        ):
+            await call_agent(
+                request=_make_request(),
+                conversation_id="conv-1",
+                user=_make_user(),
+                bot_message_id="bot-msg-7",
+            )
+
+            passed_config = mock_exec.call_args[0][2]
+            assert passed_config["configurable"]["bot_message_id"] == "bot-msg-7"
+
+    @pytest.mark.asyncio
+    async def test_no_bot_message_id_when_not_provided(self):
+        async def _fake_stream(*args, **kwargs):
+            yield "data: [DONE]\n\n"
+
+        patches = _common_patches()
+        with (
+            patches["construct"],
+            patches["get_graph"],
+            patches["build_state"],
+            patch(
+                "app.agents.core.agent.build_agent_config",
+                new_callable=AsyncMock,
+                return_value={
+                    "configurable": {
+                        "thread_id": "conv-1",
+                        "user_id": "user-123",
+                        "model_name": "gpt-4o",
+                    }
+                },
+            ),
+            patches["log"],
+            patch(
+                "app.agents.core.agent.execute_graph_streaming",
+                return_value=_fake_stream(),
+            ) as mock_exec,
+        ):
+            await call_agent(
+                request=_make_request(),
+                conversation_id="conv-1",
+                user=_make_user(),
+            )
+
+            passed_config = mock_exec.call_args[0][2]
+            assert "bot_message_id" not in passed_config["configurable"]
+
+    @pytest.mark.asyncio
     async def test_error_returns_error_generator(self):
         """When _core_agent_logic raises, call_agent returns an error SSE stream."""
         patches = _common_patches()
@@ -433,7 +510,6 @@ class TestCallAgentSilent:
 
         assert result == ("Hello!", {"tool": "data"})
 
-    @pytest.mark.regression
     @pytest.mark.asyncio
     async def test_a_graph_failure_propagates_instead_of_becoming_a_result_string(self):
         """A swallowed failure returned as a normal result reads as success to every
@@ -674,6 +750,11 @@ class TestTheLaneTheRunResolves:
             patches["construct"],
             patches["get_graph"],
             patches["build_state"],
+            # dev_option is None only in production: with ENV unpinned this passes
+            # in CI (no .env) and fails on every developer machine, where
+            # apps/api/.env sets ENV=development and the dev selector resolves an
+            # option. Pinned the same way TestTheDevModelSelector pins it.
+            patch.object(agent_module.settings, "ENV", "production"),
             patch(
                 "app.agents.core.agent.build_agent_config",
                 new_callable=AsyncMock,
