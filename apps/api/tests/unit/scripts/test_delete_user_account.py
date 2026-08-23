@@ -14,7 +14,12 @@ from bson import ObjectId
 import pytest
 
 from app.db.mongodb.mongodb import object_id_filter
-from app.scripts.delete_user_account import _chroma_inventory, _mongo_inventory
+from app.scripts.delete_user_account import (
+    PG_USER_TABLES,
+    _chroma_inventory,
+    _mongo_inventory,
+    _pg_inventory,
+)
 
 UID = "67689b80006f6eec3f6f6df8"
 
@@ -147,3 +152,36 @@ class TestMongoInventory:
         per_collection["fs.files"].count_documents.assert_called_once_with(
             {"metadata.user_id": UID}
         )
+
+
+@pytest.mark.unit
+class TestPgInventory:
+    def test_counts_every_user_table_and_omits_the_empty_ones(self) -> None:
+        """Postgres is scanned by a fixed table list rather than a catalogue
+        query, so a table dropped from PG_USER_TABLES is never counted and never
+        deleted — the inventory would report the user as fully erased."""
+        rows = iter([(3,)] + [(0,)] * (len(PG_USER_TABLES) - 1))
+        cursor = MagicMock()
+        cursor.fetchone.side_effect = lambda: next(rows)
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__.return_value = cursor
+
+        counts = _pg_inventory(conn, UID)
+
+        assert counts == {PG_USER_TABLES[0]: 3}
+        assert cursor.execute.call_count == len(PG_USER_TABLES)
+
+    def test_every_query_is_scoped_to_this_user(self) -> None:
+        """An unscoped count would report (and the delete pass then act on)
+        other people's rows."""
+        cursor = MagicMock()
+        cursor.fetchone.return_value = (1,)
+        conn = MagicMock()
+        conn.cursor.return_value.__enter__.return_value = cursor
+
+        _pg_inventory(conn, UID)
+
+        for call in cursor.execute.call_args_list:
+            sql, params = call.args
+            assert "WHERE user_id = %s" in sql
+            assert params == (UID,)
