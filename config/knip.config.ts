@@ -106,6 +106,11 @@ const config: KnipConfig = {
     ".agents/skills/**",
     ".claude/skills/**",
 
+    // "entire" checkpoint tooling: editor-loaded plugins (opencode, pi), never
+    // imported by the workspace.
+    ".opencode/**",
+    ".pi/**",
+
     // Builtin docgen skill templates: .mjs/.typ/.py/.tex files materialized into
     // the agent workspace and executed by the skills' build.sh scripts (e.g.
     // `node report.mjs`), never imported as modules — so knip reads them as
@@ -387,6 +392,11 @@ const config: KnipConfig = {
         "@gaia/bot-slack",
         "@gaia/bot-telegram",
         "@gaia/bot-whatsapp",
+        // Test-only: `vi.mock("amqplib")` in __tests__ must resolve the same
+        // module id the shared OutboundConsumer imports, which under the
+        // isolated linker requires apps/bots to declare it. Tests are excluded
+        // from the reference graph above, so knip cannot see that use.
+        "amqplib",
       ],
     },
 
