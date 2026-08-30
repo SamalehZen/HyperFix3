@@ -35,6 +35,24 @@ def _usage_message(content: str, *, prompt: int, cached: int) -> AIMessage:
     )
 
 
+@pytest.fixture(name="invoke_options")
+def _invoke_options() -> type:
+    """``LLMInvokeOptions``, resolved when a test RUNS rather than when this
+    file is imported.
+
+    This module must COLLECT cleanly against the base revision — that is the
+    whole reason it was split out of ``test_llm_client.py`` (see the module
+    docstring) — and ``LLMInvokeOptions`` is introduced by this branch. A
+    module-level import would turn the regression-proof lane's base collection
+    into an ERROR, which proves nothing about the bug this file pins. One
+    documented deferral in a fixture, rather than a bare inline import in
+    every test.
+    """
+    from app.agents.llm.client import LLMInvokeOptions
+
+    return LLMInvokeOptions
+
+
 class TestStickyFlipReplayAccounting:
     """When a graph call's prompt cache misses, ``ainvoke_llm`` re-sends to warm
     the provider's chain and DISCARDS the replay's answer — the first answer is
@@ -57,7 +75,9 @@ class TestStickyFlipReplayAccounting:
 
     @pytest.mark.regression
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
-    async def test_discarded_first_invocation_is_metered(self, mock_record: AsyncMock) -> None:
+    async def test_discarded_first_invocation_is_metered(
+        self, mock_record: AsyncMock, invoke_options: type
+    ) -> None:
         mock_record.return_value = 0.004
         primary = self._flipping_primary()
 
@@ -72,7 +92,7 @@ class TestStickyFlipReplayAccounting:
                 }
             },
             label="comms_agent",
-            meter_auxiliary=False,
+            options=invoke_options(meter_auxiliary=False),
         )
 
         # The first answer is what streamed to the user, so it is what the turn
@@ -82,8 +102,8 @@ class TestStickyFlipReplayAccounting:
         charged = mock_record.await_args.kwargs
         # The DISCARDED invocation is the one being paid for: it is the replay,
         # which is the call that came back warm.
-        assert charged["cached_tokens"] == 9_900
-        assert charged["input_tokens"] == 10_000
+        assert charged["usage"]["cached_tokens"] == 9_900
+        assert charged["usage"]["input_tokens"] == 10_000
         assert charged["root_request_id"] == "r1"
         assert charged["user_id"] == "u1"
         # Priced against what the provider reported serving, not what the run
@@ -92,31 +112,40 @@ class TestStickyFlipReplayAccounting:
         assert charged["charge_to_budget"] is True
 
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
-    async def test_no_replay_means_no_extra_metering(self, mock_record: AsyncMock) -> None:
+    async def test_no_replay_means_no_extra_metering(
+        self, mock_record: AsyncMock, invoke_options: type
+    ) -> None:
         runnable = NonCallableMagicMock()
         runnable.with_retry = MagicMock(return_value=runnable)
         runnable.ainvoke = AsyncMock(
             return_value=_usage_message("warm", prompt=10_000, cached=9_900)
         )
-
-        await ainvoke_llm(runnable, [HumanMessage(content="hi")], meter_auxiliary=False)
+        await ainvoke_llm(
+            runnable, [HumanMessage(content="hi")], options=invoke_options(meter_auxiliary=False)
+        )
 
         assert runnable.ainvoke.await_count == 1
         mock_record.assert_not_awaited()
 
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
-    async def test_auxiliary_lane_never_replays(self, mock_record: AsyncMock) -> None:
+    async def test_auxiliary_lane_never_replays(
+        self, mock_record: AsyncMock, invoke_options: type
+    ) -> None:
         """A one-shot helper call has no prior chain — cold IS its steady
         state, so a replay is pure double billing."""
         primary = self._flipping_primary()
 
-        await ainvoke_llm(primary, [HumanMessage(content="hi")], meter_auxiliary=True)
+        await ainvoke_llm(
+            primary, [HumanMessage(content="hi")], options=invoke_options(meter_auxiliary=True)
+        )
 
         assert primary.ainvoke.await_count == 1
         mock_record.assert_not_awaited()
 
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
-    async def test_gemini_lane_never_replays(self, mock_record: AsyncMock) -> None:
+    async def test_gemini_lane_never_replays(
+        self, mock_record: AsyncMock, invoke_options: type
+    ) -> None:
         """No sticky routing on Gemini: a replay there is a second full-price
         call with no possible upside."""
         primary = self._flipping_primary()
@@ -125,7 +154,7 @@ class TestStickyFlipReplayAccounting:
             primary,
             [HumanMessage(content="hi")],
             config={"configurable": {"provider": "gemini"}},
-            meter_auxiliary=False,
+            options=invoke_options(meter_auxiliary=False),
         )
 
         assert primary.ainvoke.await_count == 1
@@ -133,7 +162,7 @@ class TestStickyFlipReplayAccounting:
 
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
     async def test_replay_is_silenced_so_it_never_streams_to_the_user(
-        self, mock_record: AsyncMock
+        self, mock_record: AsyncMock, invoke_options: type
     ) -> None:
         """Graph providers stream; without the silent stamp both invocations'
         tokens land in one SSE stream and the user sees two answers."""
@@ -144,7 +173,7 @@ class TestStickyFlipReplayAccounting:
             primary,
             [HumanMessage(content="hi")],
             config={"configurable": {"provider": "openrouter"}},
-            meter_auxiliary=False,
+            options=invoke_options(meter_auxiliary=False),
         )
 
         first_cfg = primary.ainvoke.await_args_list[0].kwargs["config"]
@@ -153,7 +182,9 @@ class TestStickyFlipReplayAccounting:
         assert replay_cfg["metadata"]["silent"] is True
 
     @patch("app.agents.llm.client.record_llm_call", new_callable=AsyncMock)
-    async def test_a_failed_replay_keeps_the_first_response(self, mock_record: AsyncMock) -> None:
+    async def test_a_failed_replay_keeps_the_first_response(
+        self, mock_record: AsyncMock, invoke_options: type
+    ) -> None:
         """The first answer is complete and in hand — a 429 on the re-send
         must never cost the turn (or trigger a third, fallback call)."""
         runnable = NonCallableMagicMock()
@@ -164,12 +195,11 @@ class TestStickyFlipReplayAccounting:
                 RuntimeError("429 on the re-send"),
             ]
         )
-
         result = await ainvoke_llm(
             runnable,
             [HumanMessage(content="hi")],
             config={"configurable": {"provider": "openrouter"}},
-            meter_auxiliary=False,
+            options=invoke_options(meter_auxiliary=False),
         )
 
         assert result.content == "cold"
