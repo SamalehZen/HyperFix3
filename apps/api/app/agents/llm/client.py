@@ -2,6 +2,7 @@ import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import cache
+import math
 from typing import Any, TypedDict, TypeVar, cast
 
 from langchain_core.callbacks import BaseCallbackHandler, UsageMetadataCallbackHandler
@@ -732,7 +733,20 @@ async def _meter_discarded_replay(
     label: str,
 ) -> None:
     """Meter the sticky-flip replay whose answer was thrown away — otherwise its
-    tokens miss the daily budget, the per-request ceiling and COGS entirely.
+    tokens miss COGS entirely.
+
+    Recorded exactly like auxiliary spend, and for the same reason: this is a
+    cache-warming re-send GAIA chose to make, and the user never received its
+    answer. So it is booked durably (``usage_daily.aux_cost``) with
+    ``background=True`` on the ``llm_call`` event, and:
+
+    - ``charge_to_budget=False`` — charging it made the user's daily allowance
+      pay for a reply that was discarded. Measured over 2026-08-16..29: 3,614
+      of these, $34.55, ~20% of all LLM spend, all of it billed to users.
+    - no ``root_request_id`` — that counter is the per-request token ceiling
+      that bounds one agent tree against runaway loops. Our own re-send is not
+      the model looping, and letting it count means a turn can be truncated by
+      the optimisation meant to make it cheaper.
 
     Graph-lane only by construction: the replay itself is gated on
     ``not meter_auxiliary``, and the graph lane meters from the AIMessage that
@@ -746,20 +760,20 @@ async def _meter_discarded_replay(
     # ModelLane back would close the cycle.
     model_name = extract_message_model(discarded)
     user_id = configurable.get("user_id")
-    root_request_id = configurable.get("root_request_id")
     provider_cost = extract_message_cost(discarded)
     cost = await record_llm_call(
         user_id=str(user_id) if user_id else None,
         model_name=model_name,
         usage=usage,
-        root_request_id=str(root_request_id) if root_request_id else None,
-        charge_to_budget=True,
+        root_request_id=None,
+        charge_to_budget=False,
         provider_cost=provider_cost,
     )
     log.info(
         "llm_call",
         llm_event="llm_call",
         sticky_flip_discarded=True,
+        background=True,
         cost_source="provider" if provider_cost is not None else "table",
         agent_name=label,
         model=model_name,
@@ -1052,9 +1066,13 @@ def _reported_cost(response: LLMResult) -> float | None:
         if candidate is not None:
             # A price that will not parse is not a price: skip it and let the
             # next shape (then the table) answer, rather than failing a call
-            # that already succeeded over its own cost annotation.
+            # that already succeeded over its own cost annotation. The same goes
+            # for a negative or non-finite one — it would be summed across the
+            # retries of this call and land in a budget window.
             with suppress(TypeError, ValueError):
-                return float(candidate)
+                parsed = float(candidate)
+                if math.isfinite(parsed) and parsed >= 0.0:
+                    return parsed
     for generations in response.generations:
         for generation in generations:
             message = getattr(generation, "message", None)
