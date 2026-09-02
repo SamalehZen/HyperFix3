@@ -113,6 +113,7 @@ class TrackedTodoService:
         priority: Priority = Priority.NONE,
         labels: list[str] | None = None,
         initial_canvas: str | None = None,
+        source_conversation_id: str | None = None,
     ) -> TodoResponse:
         """Create a todo with VFS canvas and ChromaDB indexing.
 
@@ -150,7 +151,10 @@ class TrackedTodoService:
             todo_id,
             user_id=user_id,
             update=TodoUpdate(
-                vfs_path=vfs_path, canvas_content=canvas_content, log_content=log_content
+                vfs_path=vfs_path,
+                canvas_content=canvas_content,
+                log_content=log_content,
+                source_conversation_id=source_conversation_id,
             ),
         )
 

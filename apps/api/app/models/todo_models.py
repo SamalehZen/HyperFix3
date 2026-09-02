@@ -353,6 +353,9 @@ class TodoDocument(UserScopedDocument):
     trigger_subscriptions: list[TriggerSubscription] = Field(default_factory=list)
     # Sender of the email an onboarding-seeded todo was extracted from.
     source_email: str | None = None
+    # The chat that created this tracked todo, captured at creation. None for todos
+    # created outside a chat (onboarding/REST).
+    source_conversation_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -382,6 +385,7 @@ class TodoUpdate(BaseModel):
     completed_at: datetime | None = None
     canvas_content: str | None = None
     log_content: str | None = None
+    source_conversation_id: str | None = None
     trigger_subscriptions: list[TriggerSubscription] | None = None
 
 

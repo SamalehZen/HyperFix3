@@ -36,7 +36,6 @@ apps/api/app/agents/tools/integrations/twitter_tool.py	PLR0912
 apps/api/app/agents/tools/integrations/twitter_tool.py	PLR0915
 apps/api/app/agents/tools/integrations/urgency_tool.py	PLR0912
 apps/api/app/agents/tools/integrations/urgency_tool.py	PLR0915
-apps/api/app/agents/tools/reminder_tool.py	PLR0913
 apps/api/app/agents/tools/research_tool.py	PLR0915
 apps/api/app/agents/tools/todo_tool.py	PLR0913
 apps/api/app/agents/tools/todo_tools.py	PLR0912
@@ -85,7 +84,6 @@ apps/api/app/services/onboarding/first_message_service.py	PLR0913
 apps/api/app/services/onboarding/post_onboarding_service.py	PLR0913
 apps/api/app/services/onboarding/social_profile_service.py	PLR0912
 apps/api/app/services/onboarding/social_profile_service.py	PLR0915
-apps/api/app/services/outbound_delivery.py	PLR0913
 apps/api/app/services/tools/tools_service.py	PLR0912
 apps/api/app/services/workflow/generation_service.py	PLR0912
 apps/api/app/services/workflow/generation_service.py	PLR0913
