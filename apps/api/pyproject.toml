@@ -194,7 +194,7 @@ backend = [
   "langfuse>=3.7.0",
   "opik>=1.10.0",
   "litellm>=1.83.4,<1.90",
-  "prometheus-fastapi-instrumentator>=7.0.0",
+  "prometheus-fastapi-instrumentator>=8.1.0",
   "prometheus-client>=0.20.0",
   "pyarrow>=25.0.0",
 ]
