@@ -421,8 +421,20 @@ async def _resolve_display_bio(onboarding: dict[str, Any], user_id: str) -> str:
         stored_bio: str = onboarding.get("user_bio", "")
         return stored_bio
 
-    connection_status = await get_composio_service().check_connection_status(["gmail"], user_id)
-    if connection_status.get("gmail", False):
+    # HyperFix : degrade proprement sans Composio (self-host minimal sans
+    # integrations Google) — la bio reste "setting up", jamais de crash 500.
+    try:
+        connection_status = await get_composio_service().check_connection_status(["gmail"], user_id)
+        gmail_connected = connection_status.get("gmail", False)
+    except Exception as e:
+        log.warning(
+            f"{LogTag.ONBOARDING} Composio unavailable for bio check — treating as not connected",
+            user_id=user_id,
+            error_type=type(e).__name__,
+            error=str(e)[:120],
+        )
+        gmail_connected = False
+    if gmail_connected:
         return _BIO_PROCESSING_MESSAGE
     return "Setting up your profile..."
 
