@@ -41,6 +41,12 @@ DEFAULT_PRICING = ModelPricing(
 # added or re-pointed, and keep tests/unit/config/test_model_pricing.py's
 # runtime-coverage test green so a referenced-but-unpriced model cannot ship.
 MODEL_PRICING: dict[str, ModelPricing] = {
+    # HyperFix : voie par défaut zen-muse (OpenCode Zen, gratuit à date).
+    "muse-spark-1.3-contributor-free": ModelPricing(
+        input_cost_per_1k=0.0,
+        output_cost_per_1k=0.0,
+        cached_input_cost_per_1k=0.0,
+    ),
     # DEFAULT_MODEL_NAME / PAID_MODEL_NAME — the graph lane on every tier.
     "deepseek/deepseek-v4-flash-0731": ModelPricing(
         input_cost_per_1k=0.00014,
