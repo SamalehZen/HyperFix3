@@ -203,6 +203,14 @@ class CommonSettings(BaseAppSettings):
     DEV_LLM_BASE_URL: str | None = None
     DEV_LLM_API_KEY: str | None = None
     DEV_LLM_MODEL: str | None = None
+
+    # ----------------------------------------------
+    # HyperFix : OpenCode Zen / Muse via l'API OpenAI Responses (prod).
+    # use_responses_api=True dans le client ; max_tokens -> max_output_tokens.
+    # ----------------------------------------------
+    ZEN_MUSE_BASE_URL: str = "https://opencode.ai/zen/v1"
+    ZEN_MUSE_API_KEY: str = ""
+    ZEN_MUSE_MODEL: str = "muse-spark-1.3-contributor-free"
     # Default model for every dev request that doesn't pick one in the chat-header
     # selector — any DEV_MODEL_OPTIONS key from app/constants/llm.py ("custom" =
     # the endpoint above). An explicit selector choice still wins.
