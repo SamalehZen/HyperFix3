@@ -116,6 +116,31 @@ function normalizeLabel(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+// HyperFix : libellés français des outils du MCP gamme-engine. La lookup gagne
+// sur `call.message` (le backend envoie déjà un message anglais générique).
+const GAMME_TOOL_LABELS_FR: Record<string, string> = {
+  gamme_mon_rayon: "Vérification de ton rayon",
+  gamme_rayons: "Liste des rayons",
+  gamme_negatifs: "Lecture des stocks négatifs",
+  gamme_anomalies: "Détection des anomalies",
+  gamme_rapports: "Lecture du rapport du jour",
+  gamme_serie: "Calcul de la série quotidienne",
+  gamme_article: "Fiche article",
+  gamme_recherche_articles: "Recherche d'articles",
+  gamme_query: "Interrogation de la gamme",
+  gamme_history_query: "Historique d'une journée",
+  gamme_import_file: "Import du fichier de gamme",
+  gamme_imports: "Historique des imports",
+  gamme_etiquettes: "Génération des étiquettes",
+  gamme_image_article: "Photo de l'article",
+  gamme_libeller: "Nettoyage des libellés",
+  gamme_structure_articles: "Classification des articles",
+};
+const isGammeTool = (toolName: string): boolean => toolName in GAMME_TOOL_LABELS_FR;
+export { isGammeTool };
+const gammeLabel = (call: ToolCallEntry): string | null =>
+  GAMME_TOOL_LABELS_FR[call.tool_name] ?? null;
+
 function ToolCallRow({
   call,
   isLast,
@@ -136,10 +161,12 @@ function ToolCallRow({
   const [expanded, setExpanded] = useState(false);
 
   // Skill-file reads/writes/edits get a dedicated label + plugin icon; the skill
-  // label wins over any backend-provided custom message.
+  // label wins over any backend-provided custom message. HyperFix : les outils
+  // gamme prennent leur libellé FR avant le message backend (anglais générique).
   const skillLabel = skillToolLabel(call);
+  const gammeText = gammeLabel(call);
   const primaryLabel =
-    skillLabel || call.message || formatToolName(call.tool_name);
+    skillLabel || gammeText || call.message || formatToolName(call.tool_name);
   const integrationLabel =
     getIntegrationName(call) ||
     (call.tool_category && call.tool_category !== "unknown"
@@ -161,23 +188,31 @@ function ToolCallRow({
   const secondaryLabel = hasCustomLabel
     ? call.tool_name.toLowerCase()
     : integrationLabel;
-  // Hide the secondary when it adds nothing — e.g. "retrieve_tools" under
-  // "Retrieve tools". Compares with separators stripped so a tool name only
-  // shows when it genuinely differs from the primary label.
-  const normPrimary = normalizeLabel(primaryLabel);
-  const normSecondary = normalizeLabel(secondaryLabel);
-  const hasCategoryText =
-    secondaryLabel.length > 0 &&
-    normSecondary.length > 0 &&
-    !normPrimary.includes(normSecondary) &&
-    !normSecondary.includes(normPrimary);
+  // HyperFix : pour les outils gamme, on force le libellé FR et on masque le
+  // secondary technique (le nom brut `gamme_xxx` n'apprend rien au client).
+  const isGamme = isGammeTool(call.tool_name);
+  const gammeLabelText = gammeLabel(call);
+  const effectivePrimary =
+    isGamme && gammeLabelText ? gammeLabelText : primaryLabel;
+  // Masque le JSON Input/Output par défaut pour les outils gamme (lecture métier).
   const hasInputs =
+    !isGamme &&
     call.inputs &&
     typeof call.inputs === "object" &&
     Object.keys(call.inputs).length > 0;
-  const hasOutput = call.output && call.output.trim().length > 0;
-  const hasDetails = hasInputs || hasOutput;
-
+  const hasOutput = !isGamme && call.output && call.output.trim().length > 0;
+  const hasDetails = isGamme ? false : hasInputs || hasOutput;
+  // Hide the secondary when it adds nothing — e.g. "retrieve_tools" under
+  // "Retrieve tools". Compares with separators stripped so a tool name only
+  // shows when it genuinely differs from the primary label.
+  const normPrimary = normalizeLabel(effectivePrimary);
+  const normSecondary = normalizeLabel(secondaryLabel);
+  const hasCategoryText = isGamme
+    ? false
+    : secondaryLabel.length > 0 &&
+      normSecondary.length > 0 &&
+      !normPrimary.includes(normSecondary) &&
+      !normSecondary.includes(normPrimary);
   return (
     <div className="flex items-stretch gap-2">
       <div className="flex flex-col items-center self-stretch">
@@ -216,7 +251,7 @@ function ToolCallRow({
             <p
               className={`text-xs text-zinc-400 font-medium ${hasDetails ? "group-hover/parent:text-white transition-colors" : ""}`}
             >
-              {primaryLabel}
+              {effectivePrimary}
             </p>
             {hasDetails && (
               <ChevronDown

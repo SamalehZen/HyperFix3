@@ -11,7 +11,7 @@ import type {
 } from "@/config/registries/toolRegistry";
 import { getToolCategoryIcon } from "@/features/chat/utils/toolIcons";
 import { useIntegrationLookup } from "@/features/integrations/hooks/useIntegrationLookup";
-import { StepRow, SubagentRow } from "./SubagentRow";
+import { StepRow, SubagentRow, isGammeTool } from "./SubagentRow";
 import { deriveTimelineItemKeys } from "./TextBubble/useSubagentSynthesis";
 
 /**
@@ -188,6 +188,15 @@ export default function UnifiedToolThread({
   // `expanded` state across every stream frame.
   const itemKeys = deriveTimelineItemKeys(timeline);
 
+  // HyperFix : quand le fil contient des outils du MCP gamme-engine, l'en-tête
+  // passe en français ("Moteur gamme") au lieu du générique "Used N tools".
+  const hasGammeTools = timeline.some(
+    (item) => item.kind === "tool" && isGammeTool(item.data.tool_name),
+  );
+  const threadTitle = hasGammeTools
+    ? `Moteur gamme · ${totalToolCount} étape${totalToolCount === 1 ? "" : "s"}`
+    : `Used ${totalToolCount} tool${totalToolCount === 1 ? "" : "s"}`;
+
   if (timeline.length === 0) return null;
 
   return (
@@ -213,8 +222,7 @@ export default function UnifiedToolThread({
               <span
                 className={`text-xs font-medium transition-colors duration-200 ${totalToolCount > 1 ? "ml-2" : ""}`}
               >
-                Used {totalToolCount} tool
-                {totalToolCount === 1 ? "" : "s"}
+                {threadTitle}
               </span>
               <ChevronDown
                 className={`${isExpanded ? "rotate-180" : ""} ml-2 transition-transform duration-200`}
