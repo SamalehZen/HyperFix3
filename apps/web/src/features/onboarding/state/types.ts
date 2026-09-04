@@ -25,6 +25,8 @@ export interface OnboardingState {
   questionIndex: number;
   draftText: string;
   draftProfession: string | null;
+  /** HyperFix : brouillon du rayon (chips + valeur libre). */
+  draftRayon: string | null;
 
   server: PersonalizationData | null;
 
@@ -63,6 +65,7 @@ export interface OnboardingState {
 export type Action =
   | { type: "draftText"; value: string }
   | { type: "draftProfession"; value: string | null }
+  | { type: "draftRayon"; value: string | null }
   | { type: "answer"; field: string; value: string }
   | { type: "serverSnapshot"; data: PersonalizationData }
   | {

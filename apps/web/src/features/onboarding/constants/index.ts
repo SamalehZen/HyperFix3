@@ -28,10 +28,18 @@ export const professionOptions: ProfessionOption[] = [
 
 export const FIELD_NAMES = {
   NAME: "name",
+  RAYON: "rayon",
   PROFESSION: "profession",
   GMAIL: "gmail",
   FOCUS: "focus",
 } as const;
+
+// HyperFix : les deux rayons gérés aujourd'hui (rayons.json côté gamme-engine).
+// La vérification stricte reste serveur (gamme_mon_rayon) au premier usage.
+export const rayonOptions: ProfessionOption[] = [
+  { label: "Épicerie salée", value: "epicerie-salee" },
+  { label: "Frais surgelé", value: "frais-surgele" },
+];
 
 export const questions: Question[] = [
   {
@@ -43,12 +51,23 @@ export const questions: Question[] = [
   {
     id: "2",
     question:
+      "Quel rayon gères-tu ? C'est ton espace de travail HyperFix (stocks négatifs, anomalies, récap quotidien).",
+    placeholder: "Épicerie salée, Frais surgelé...",
+    fieldName: FIELD_NAMES.RAYON,
+    chipOptions: rayonOptions.map((r) => ({
+      label: r.label,
+      value: r.value,
+    })),
+  },
+  {
+    id: "3",
+    question:
       "What do you do? This helps me handle your emails, calendar, and tasks the right way.",
     placeholder: "e.g., Software Developer, Student, Designer...",
     fieldName: FIELD_NAMES.PROFESSION,
   },
   {
-    id: "3",
+    id: "4",
     question:
       "Last thing. Connect your Gmail and I'll go through your inbox, find what matters, and set up your first action items.",
     placeholder: "",

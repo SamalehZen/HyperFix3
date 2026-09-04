@@ -234,6 +234,8 @@ class UserRepository(MongoRepository[UserDocument, UserUpdate]):
         timezone: str | None = None,
         completed_at: datetime | None = None,
         focus: str | None = None,
+        # HyperFix : rayon de gestion choisi à l'onboarding.
+        rayon: str | None = None,
         clarify_answers: list[ClarifyAnswerRecord] | None = None,
         selected_integrations: list[str] | None = None,
     ) -> UserDocument | None:
@@ -258,6 +260,8 @@ class UserRepository(MongoRepository[UserDocument, UserUpdate]):
             set_fields["timezone"] = timezone
         if focus is not None:
             set_fields["onboarding.focus"] = focus
+        if rayon is not None:
+            set_fields["onboarding.rayon"] = rayon
         if clarify_answers is not None:
             set_fields["onboarding.clarify_answers"] = clarify_answers
         if selected_integrations is not None:

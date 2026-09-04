@@ -5,6 +5,7 @@ export const initialState: OnboardingState = {
   questionIndex: 0,
   draftText: "",
   draftProfession: null,
+  draftRayon: null,
 
   server: null,
 

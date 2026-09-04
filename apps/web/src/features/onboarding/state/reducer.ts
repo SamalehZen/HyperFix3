@@ -54,6 +54,8 @@ export function reducer(
 
     case "draftProfession":
       return { ...state, draftProfession: action.value };
+    case "draftRayon":
+      return { ...state, draftRayon: action.value };
 
     case "answer": {
       const responses = {
@@ -67,6 +69,7 @@ export function reducer(
         questionIndex: isLast ? questions.length : state.questionIndex + 1,
         draftText: "",
         draftProfession: null,
+        draftRayon: null,
       };
     }
 

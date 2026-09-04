@@ -123,6 +123,11 @@ class ClarifyAnswer(BaseModel):
 class OnboardingRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100, description="User's preferred name")
     profession: str = Field(..., min_length=1, max_length=50, description="User's profession")
+    # HyperFix : rayon de gestion choisi à l'onboarding (libre, vérifié ensuite
+    # par gamme_mon_rayon côté MCP — ici on ne fait que le mémoriser).
+    rayon: str | None = Field(
+        None, max_length=50, description="HyperFix gestionnaire rayon id (ex: epicerie-salee)"
+    )
     timezone: str | None = Field(
         None, description="User's detected timezone (e.g., 'America/New_York', 'UTC')"
     )

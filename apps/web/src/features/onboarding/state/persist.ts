@@ -8,6 +8,7 @@ interface PersistedShape {
   questionIndex: number;
   draftText: string;
   draftProfession: string | null;
+  draftRayon: string | null;
   ackedWritingStyle: boolean;
   ackedTodos: boolean;
   workflowsConfirmed: boolean;
@@ -37,6 +38,7 @@ function pick(state: OnboardingState): PersistedShape {
     questionIndex: state.questionIndex,
     draftText: state.draftText,
     draftProfession: state.draftProfession,
+    draftRayon: state.draftRayon,
     ackedWritingStyle: state.ackedWritingStyle,
     ackedTodos: state.ackedTodos,
     workflowsConfirmed: state.workflowsConfirmed,
@@ -67,6 +69,7 @@ export function loadPersisted(): Partial<OnboardingState> | null {
       questionIndex: parsed.questionIndex ?? 0,
       draftText: parsed.draftText ?? "",
       draftProfession: parsed.draftProfession ?? null,
+      draftRayon: parsed.draftRayon ?? null,
       ackedWritingStyle: parsed.ackedWritingStyle ?? false,
       ackedTodos: parsed.ackedTodos ?? false,
       workflowsConfirmed: parsed.workflowsConfirmed ?? false,

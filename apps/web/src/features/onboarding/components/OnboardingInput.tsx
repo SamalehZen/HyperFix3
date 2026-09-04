@@ -24,7 +24,12 @@ import { RaisedButton } from "@/components/ui/raised-button";
 import { useIntegrations } from "@/features/integrations/hooks/useIntegrations";
 import { cn } from "@/lib/utils";
 
-import { FIELD_NAMES, professionOptions, questions } from "../constants";
+import {
+  FIELD_NAMES,
+  professionOptions,
+  questions,
+  rayonOptions,
+} from "../constants";
 
 interface DataPrivacyModalProps {
   open: boolean;
@@ -101,11 +106,14 @@ interface QaModeProps {
   questionIndex: number;
   draftText: string;
   draftProfession: string | null;
+  draftRayon: string | null;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onSubmit: (e: React.FormEvent) => void;
   onInputChange: (value: string) => void;
   onProfessionSelect: (key: React.Key | null) => void;
   onProfessionInputChange: (value: string) => void;
+  onRayonSelect: (key: React.Key | null) => void;
+  onRayonInputChange: (value: string) => void;
   onGmailSkip: () => void;
 }
 
@@ -218,17 +226,21 @@ function QaInput(props: QaModeProps) {
     questionIndex,
     draftText,
     draftProfession,
+    draftRayon,
     inputRef,
     onSubmit,
     onInputChange,
     onProfessionSelect,
     onProfessionInputChange,
+    onRayonSelect,
+    onRayonInputChange,
     onGmailSkip,
   } = props;
   const currentQuestion =
     questionIndex < questions.length ? questions[questionIndex] : null;
   const targetField =
-    currentQuestion?.fieldName === FIELD_NAMES.PROFESSION
+    currentQuestion?.fieldName === FIELD_NAMES.PROFESSION ||
+    currentQuestion?.fieldName === FIELD_NAMES.RAYON
       ? "autocomplete"
       : "default";
   useAutofocus(inputRef, targetField);
@@ -244,10 +256,13 @@ function QaInput(props: QaModeProps) {
           placeholder={currentQuestion.placeholder}
           draftText={draftText}
           draftProfession={draftProfession}
+          draftRayon={draftRayon}
           inputRef={inputRef}
           onInputChange={onInputChange}
           onProfessionSelect={onProfessionSelect}
           onProfessionInputChange={onProfessionInputChange}
+          onRayonSelect={onRayonSelect}
+          onRayonInputChange={onRayonInputChange}
           onGmailSkip={onGmailSkip}
         />
       </div>
@@ -262,10 +277,13 @@ interface QaInputBodyProps {
   placeholder: string;
   draftText: string;
   draftProfession: string | null;
+  draftRayon: string | null;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onInputChange: (value: string) => void;
   onProfessionSelect: (key: React.Key | null) => void;
   onProfessionInputChange: (value: string) => void;
+  onRayonSelect: (key: React.Key | null) => void;
+  onRayonInputChange: (value: string) => void;
   onGmailSkip: () => void;
 }
 
@@ -275,12 +293,61 @@ function QaInputBody({
   placeholder,
   draftText,
   draftProfession,
+  draftRayon,
   inputRef,
   onInputChange,
   onProfessionSelect,
   onProfessionInputChange,
+  onRayonSelect,
+  onRayonInputChange,
   onGmailSkip,
 }: QaInputBodyProps) {
+  if (field === FIELD_NAMES.RAYON) {
+    // HyperFix : chips des rayons gérés + valeur libre (vérif serveur au
+    // premier usage via gamme_mon_rayon).
+    return (
+      <div className="flex flex-col gap-3">
+        <Autocomplete
+          key={`rayon-${questionIndex}`}
+          inputValue={draftRayon ?? ""}
+          onInputChange={onRayonInputChange}
+          onSelectionChange={onRayonSelect}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && draftRayon?.trim()) {
+              e.stopPropagation();
+            }
+          }}
+          placeholder="Choisis ou tape ton rayon..."
+          variant="faded"
+          size="lg"
+          radius="full"
+          allowsCustomValue
+          classNames={{ base: "w-full" }}
+        >
+          {rayonOptions.map((rayon) => (
+            <AutocompleteItem key={rayon.value}>{rayon.label}</AutocompleteItem>
+          ))}
+        </Autocomplete>
+        <div className="flex flex-wrap gap-2">
+          {rayonOptions.map((rayon) => (
+            <button
+              key={rayon.value}
+              type="button"
+              onClick={() => onRayonSelect(rayon.value)}
+              className={`rounded-full border px-4 py-2 text-sm transition-colors ${
+                draftRayon === rayon.value
+                  ? "border-[#00bbff] bg-[#00bbff]/10 text-[#00bbff]"
+                  : "border-zinc-700 text-zinc-300 hover:border-zinc-500"
+              }`}
+            >
+              {rayon.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (field === FIELD_NAMES.PROFESSION) {
     return (
       <Autocomplete

@@ -69,6 +69,13 @@ async def complete_onboarding(
             response_style="casual",  # Default response style
             custom_instructions=None,
         )
+        # HyperFix : rayon injecté dans les préférences (lu par le prompt agent
+        # via format_user_preferences_for_agent -> build_user_context_parts).
+        if onboarding_data.rayon and onboarding_data.rayon.strip():
+            preferences.custom_instructions = (
+                f"Rayon géré (HyperFix): {onboarding_data.rayon.strip()}. "
+                "Utiliser ce rayon avec les outils gamme_*, vérifié par gamme_mon_rayon."
+            )
 
         clarify_answers: list[ClarifyAnswerRecord] | None = None
         if onboarding_data.clarify_answers:
@@ -88,6 +95,13 @@ async def complete_onboarding(
         if onboarding_data.focus and onboarding_data.focus.strip():
             focus = onboarding_data.focus.strip()
 
+        # HyperFix : rayon (normalisé minuscule/tiret, libre à la saisie).
+        rayon = None
+        if onboarding_data.rayon and onboarding_data.rayon.strip():
+            rayon = (
+                onboarding_data.rayon.strip().lower().replace(" ", "-")[:50]
+            )
+
         # Atomic gate inside the repository: only the request that creates the
         # `onboarding` subdoc wins; concurrent POSTs and replays get None.
         # selected_integrations is already lowercased/stripped/deduped by the
@@ -101,6 +115,7 @@ async def complete_onboarding(
             pipeline_mode="split" if onboarding_data.defer_workflows else "full",
             preferences=preferences,
             focus=focus,
+            rayon=rayon,
             clarify_answers=clarify_answers,
             selected_integrations=(
                 list(onboarding_data.selected_integrations)

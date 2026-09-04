@@ -81,9 +81,35 @@ export function QuestionsComposer({ state, dispatch }: QuestionsProps) {
     [dispatch],
   );
 
+  // HyperFix : rayon — Autocomplete (valeur libre) + chips, pattern profession.
+  const handleRayonInputChange = useCallback(
+    (value: string) => {
+      dispatch({ type: "draftRayon", value: value || null });
+    },
+    [dispatch],
+  );
+
+  const handleRayonSelect = useCallback(
+    (key: React.Key | null) => {
+      const value = key != null ? String(key) : null;
+      dispatch({ type: "draftRayon", value });
+      if (value) {
+        dispatch({ type: "answer", field: FIELD_NAMES.RAYON, value });
+      }
+    },
+    [dispatch],
+  );
+
   const handleGmailSkip = useCallback(() => {
     dispatch({ type: "answer", field: FIELD_NAMES.GMAIL, value: "skipped" });
   }, [dispatch]);
+
+  const handleRayonSubmit = useCallback(() => {
+    const value = state.draftRayon?.trim() || state.draftText.trim() || null;
+    if (value) {
+      dispatch({ type: "answer", field: FIELD_NAMES.RAYON, value });
+    }
+  }, [state.draftRayon, state.draftText, dispatch]);
 
   return (
     <OnboardingInput
@@ -91,11 +117,18 @@ export function QuestionsComposer({ state, dispatch }: QuestionsProps) {
       questionIndex={state.questionIndex}
       draftText={state.draftText}
       draftProfession={state.draftProfession}
+      draftRayon={state.draftRayon}
       inputRef={inputRef}
-      onSubmit={handleSubmit}
+      onSubmit={
+        currentQuestion?.fieldName === FIELD_NAMES.RAYON
+          ? handleRayonSubmit
+          : handleSubmit
+      }
       onInputChange={handleInputChange}
       onProfessionSelect={handleProfessionSelect}
       onProfessionInputChange={handleProfessionInputChange}
+      onRayonSelect={handleRayonSelect}
+      onRayonInputChange={handleRayonInputChange}
       onGmailSkip={handleGmailSkip}
     />
   );

@@ -80,6 +80,9 @@ export function useOnboardingSubmission(
       : undefined;
     const body = {
       name: responses[FIELD_NAMES.NAME]?.trim() ?? "",
+      // HyperFix : rayon de gestion (optionnel, vérifié serveur au premier
+      // usage via gamme_mon_rayon).
+      rayon: responses[FIELD_NAMES.RAYON] ?? null,
       profession: responses[FIELD_NAMES.PROFESSION] ?? "",
       timezone: getBrowserTimezone(),
       focus: responses[FIELD_NAMES.FOCUS] ?? "",
