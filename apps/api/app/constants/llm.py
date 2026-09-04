@@ -18,8 +18,19 @@ LANE_FIELD_ID = "lane"
 
 GEMINI_PROVIDER = "gemini"
 OPENROUTER_PROVIDER = "openrouter"
+ZEN_MUSE_PROVIDER = "zen-muse"
 
-DEFAULT_LLM_PROVIDER = OPENROUTER_PROVIDER
+# HyperFix : OpenCode Zen / Muse via l'API OpenAI Responses (use_responses_api).
+# Le flip de défaut se fait en bas (DEFAULT_LLM_PROVIDER) une fois le provider
+# enregistré côté client.
+DEFAULT_ZEN_MUSE_MODEL_NAME = "muse-spark-1.3-contributor-free"
+# Le modèle raisonne ~300-600 tokens avant de répondre (mesuré 2026-09-04) :
+# budget garanti pour que la réponse finale n'arrive jamais tronquée.
+ZEN_MUSE_MAX_OUTPUT_TOKENS = 16_000
+
+# HyperFix : la voie zen-muse est le graphe par défaut ; openrouter redevient
+# repli (priorité suivante), gemini dernier repli sans clé (erreur propre).
+DEFAULT_LLM_PROVIDER = ZEN_MUSE_PROVIDER
 
 # The ``response_metadata`` key carrying the name of the upstream that actually
 # served an OpenRouter call ("Baidu", "StreamLake", ...), as opposed to
