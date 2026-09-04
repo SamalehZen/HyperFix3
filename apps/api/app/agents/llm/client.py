@@ -255,6 +255,21 @@ def init_openrouter_llm() -> LanguageModelLike:
     """
     if settings.GAIA_SIM_MODE:
         return _sim_llm()
+    # HyperFix : OPENROUTER_BASE_URL (override dev) = endpoint OpenAI-compatible
+    # tiers (B.AI). ChatOpenRouter parse des champs OpenRouter-spécifiques et
+    # casse sur la réponse — ChatOpenAI standard suffit ici (pas de reasoning
+    # wire, pas d'app attribution hors OpenRouter).
+    if settings.OPENROUTER_BASE_URL:
+        llm = ChatOpenAI(
+            model=PROVIDER_MODELS[LLMProviderName.OPENROUTER],
+            temperature=DEFAULT_LLM_TEMPERATURE,
+            streaming=True,
+            max_tokens=OPENROUTER_MAX_OUTPUT_TOKENS,
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+        )
+        llm.profile = {"max_input_tokens": DEFAULT_MAX_TOKENS}
+        return llm.configurable_fields(model_name=_MODEL_FIELD)
     llm = without_sdk_retry(
         ChatOpenRouter(
             model=PROVIDER_MODELS[LLMProviderName.OPENROUTER],
@@ -579,6 +594,18 @@ def _provider_order_kwargs() -> dict[str, Any]:
 
 @cache
 def _build_default_llm(temperature: float) -> BaseChatModel:
+    # HyperFix : override d'URL → endpoint tiers (B.AI) via ChatOpenAI standard.
+    if settings.OPENROUTER_BASE_URL:
+        llm = ChatOpenAI(
+            model=DEFAULT_MODEL_NAME,
+            temperature=temperature,
+            streaming=True,
+            max_tokens=OPENROUTER_MAX_OUTPUT_TOKENS,
+            api_key=settings.OPENROUTER_API_KEY,
+            base_url=settings.OPENROUTER_BASE_URL,
+        )
+        llm.profile = {"max_input_tokens": DEFAULT_MAX_TOKENS}
+        return llm
     llm = without_sdk_retry(
         ChatOpenRouter(
             model=DEFAULT_MODEL_NAME,
