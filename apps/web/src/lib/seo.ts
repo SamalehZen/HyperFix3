@@ -29,13 +29,13 @@ export function getSiteUrl(): string {
   return SITE_URL;
 }
 
-// Site-wide SEO Configuration
+// Site-wide SEO Configuration — HyperFix (fork Gaia, self-hosted gamme)
 export const siteConfig = {
-  short_name: "GAIA",
-  name: "GAIA - Your Personal AI Assistant",
-  fullName: "GAIA - Your Personal AI Assistant from The Experience Company",
+  short_name: "HyperFix",
+  name: "HyperFix, la fixation — notre raison d'être.",
+  fullName: "HyperFix, la fixation — notre raison d'être.",
   description:
-    "GAIA is your open-source personal AI assistant to proactively manage your email, calendar, todos, workflows and all your digital tools to boost productivity.",
+    "HyperFix est l'agent de la gamme du magasin : stocks négatifs, anomalies, capital bloqué, récap quotidien et plan d'action 48h.",
   url: getSiteUrl(),
   ogImage: "/og-image.webp",
   links: {
