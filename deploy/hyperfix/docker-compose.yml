@@ -1,0 +1,236 @@
+# HyperFix + Gaia — compose minimal (8 services + rabbitmq en test).
+# Fichier à part (upstream intact) : tout le spécifique HyperFix vit ici.
+# Usage : docker compose -f deploy/hyperfix/docker-compose.yml --env-file deploy/hyperfix/.env up -d
+# (ou `cd deploy/hyperfix` puis `docker compose up -d`).
+name: gaia-hyperfix
+
+services:
+  # ─── Infrastructure ───
+
+  chromadb:
+    image: chromadb/chroma:1.5.1
+    container_name: chromadb
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - PERSIST_DIRECTORY=/chroma/chroma
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_PORT=8000
+    ports:
+      - "127.0.0.1:${CHROMADB_HOST_PORT:-8080}:8000"
+    restart: unless-stopped
+    mem_limit: 768m
+    healthcheck:
+      test:
+        ["CMD", "/bin/bash", "-c", "cat < /dev/null > /dev/tcp/localhost/8000"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hyperfix_net
+
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER manquant (voir .env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant (voir .env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:-langgraph}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432"
+    restart: unless-stopped
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:?POSTGRES_USER manquant}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hyperfix_net
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hyperfix_net
+
+  mongo:
+    image: mongo:8
+    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+    mem_limit: 1536m
+    ports:
+      - "127.0.0.1:${MONGO_HOST_PORT:-27018}:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hyperfix_net
+
+  # Trial : ne sert que le fan-out des bots (virés). Si le backend tourne
+  # sans lui, le retirer (voir docs/RUNBOOK.md).
+  rabbitmq:
+    image: rabbitmq:4.1.8-management
+    container_name: rabbitmq
+    ports:
+      - "127.0.0.1:${RABBITMQ_HOST_PORT:-5673}:5672"
+      - "127.0.0.1:${RABBITMQ_MGMT_PORT:-15673}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - hyperfix_net
+
+  # Recherche web (gardée pour la gamme : fallback recherche produits).
+  searxng:
+    # Pinned by digest for reproducible deploys (tag 2026.6.23); bump deliberately.
+    image: searxng/searxng@sha256:f66b296a6fdfe3f656a19e98ac999a9acffa780773e39b3cbbdf673e9c474deb
+    container_name: searxng
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng-template/settings.yml:ro
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:?SEARXNG_SECRET manquant (voir .env.example)}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mkdir -p /etc/searxng
+        cp /etc/searxng-template/settings.yml /etc/searxng/settings.yml
+        exec /usr/local/searxng/entrypoint.sh
+    ports:
+      - "127.0.0.1:${SEARXNG_HOST_PORT:-8888}:8080"
+    networks:
+      - hyperfix_net
+    restart: unless-stopped
+    mem_limit: 512m
+
+  # ─── Application ───
+
+  gaia-backend:
+    container_name: gaia-backend
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      PYTHONUNBUFFERED: 1
+      FORCE_COLOR: 1
+      WORKER_TYPE: main_app
+      PYTHONPATH: /app/apps/api
+      JUICEFS_HOST_MOUNT_PATH: /mnt/jfs
+      ARTIFACT_DETECTION_MODE: accesslog
+    ports:
+      - "127.0.0.1:${API_HOST_PORT:-8000}:8000"
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse:/dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - juicefs_cache:/var/cache/juicefs
+    restart: unless-stopped
+    mem_limit: 1536m
+    tty: true
+    stdin_open: true
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks:
+      - hyperfix_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  gaia-web:
+    container_name: gaia-web
+    image: ${GAIA_WEB_IMAGE:-ghcr.io/theexperiencecompany/gaia-web:latest}
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1/}
+    environment:
+      API_BASE_URL_INTERNAL: ${API_BASE_URL_INTERNAL:-http://gaia-backend:8000/api/v1/}
+    ports:
+      - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on:
+      gaia-backend:
+        condition: service_healthy
+    networks:
+      - hyperfix_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  arq_worker:
+    container_name: arq_worker
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    env_file:
+      - .env
+    environment:
+      WORKER_TYPE: arq_worker
+      GAIA_SERVICE_NAME: arq_worker
+      PYTHONPATH: /app/apps/api
+      JUICEFS_HOST_MOUNT_PATH: /mnt/jfs
+      ARTIFACT_DETECTION_MODE: accesslog
+    command: ["python", "-m", "arq", "app.worker.WorkerSettings", "--custom-log-dict", "app.workers.config.log_config.ARQ_LOG_CONFIG"]
+    restart: unless-stopped
+    mem_limit: 512m
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    networks:
+      - hyperfix_net
+
+volumes:
+  chroma_data:
+  pgdata:
+  redis_data:
+  mongo_data:
+  rabbitmq_data:
+  juicefs_cache:
+
+networks:
+  hyperfix_net:
+    driver: bridge
