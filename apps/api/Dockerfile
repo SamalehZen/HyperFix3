@@ -115,7 +115,10 @@ COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/pytho
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy crawl4ai browser data (playwright chromium + patchright chromium)
-COPY --from=browsers /opt/browsers /opt/browsers
+# HyperFix : browsers retirés (1,3 Go × 2 copies = l'export déborde le disque
+# 48 Go). Le sandbox navigateur (crawl4ai/deep_research navigateur) n'est pas
+# utilisé sur notre déploiement gamme ; la recherche passe par SearXNG/httpx.
+# COPY --from=browsers /opt/browsers /opt/browsers
 
 # Install the Chromium system-dependency set for the bundled Playwright browser.
 # Using Playwright's own installer (not a hand-maintained apt list) keeps the
