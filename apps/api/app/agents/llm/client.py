@@ -21,6 +21,7 @@ from langchain_core.runnables import (
 )
 from langchain_core.runnables.utils import ConfigurableField
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_openrouter import ChatOpenRouter
 from openrouter.utils import BackoffStrategy, RetryConfig
 from pydantic import BaseModel, SecretStr
@@ -45,6 +46,7 @@ from app.constants.llm import (
     DEFAULT_LLM_TEMPERATURE,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL_NAME,
+    DEFAULT_ZEN_MUSE_MODEL_NAME,
     DEV_LLM_MAX_OUTPUT_TOKENS,
     HELPER_MAX_OUTPUT_TOKENS,
     LLM_INVOKE_TIMEOUT_SECONDS,
@@ -64,6 +66,7 @@ from app.constants.llm import (
     SIM_STUB_MODEL_NAME,
     UNKNOWN_MODEL_NAME,
     VISION_MODEL_NAME,
+    ZEN_MUSE_MAX_OUTPUT_TOKENS,
 )
 from app.constants.log_tags import LogTag
 from app.core.lazy_loader import MissingKeyStrategy, lazy_provider, providers
@@ -116,14 +119,17 @@ def with_llm_retry(runnable: Runnable, *, max_attempts: int = LLM_RETRY_MAX_ATTE
 PROVIDER_MODELS: dict[LLMProviderName, str] = {
     LLMProviderName.GEMINI: DEFAULT_GEMINI_MODEL_NAME,
     LLMProviderName.OPENROUTER: DEFAULT_MODEL_NAME,
+    # HyperFix : OpenCode Zen / Muse (API Responses), voie par défaut.
+    LLMProviderName.ZEN_MUSE: settings.ZEN_MUSE_MODEL or DEFAULT_ZEN_MUSE_MODEL_NAME,
     # The env-defined custom dev endpoint; empty when unset — the provider is
     # only registered in development with all DEV_LLM_* settings present.
     LLMProviderName.CUSTOM: settings.DEV_LLM_MODEL or "",
 }
 PROVIDER_PRIORITY: dict[int, LLMProviderName] = {
-    1: LLMProviderName.OPENROUTER,
-    2: LLMProviderName.GEMINI,
-    3: LLMProviderName.CUSTOM,
+    1: LLMProviderName.ZEN_MUSE,
+    2: LLMProviderName.OPENROUTER,
+    3: LLMProviderName.GEMINI,
+    4: LLMProviderName.CUSTOM,
 }
 
 
@@ -281,6 +287,34 @@ def init_openrouter_llm() -> LanguageModelLike:
 
 
 @lazy_provider(
+    name=LLMProviderKey.ZEN_MUSE,
+    required_keys=[settings.ZEN_MUSE_API_KEY],
+    strategy=MissingKeyStrategy.WARN,
+    warning_message="ZEN_MUSE_API_KEY not configured. The HyperFix zen-muse lane (OpenCode Zen / Responses) will not work.",
+)
+def init_zen_muse_llm() -> LanguageModelLike:
+    """HyperFix : OpenCode Zen via l'API OpenAI Responses (`use_responses_api=True`).
+
+    ChatOpenAI gère le payload (system -> instructions, historique -> input) et le
+    parsing output[].content[type=output_text]. ``max_tokens`` part en
+    ``max_output_tokens`` côté wire ; le budget couvre ~300-600 tokens de
+    raisonnement avant la réponse finale (mesuré sur muse free).
+    """
+    llm = ChatOpenAI(
+        model=PROVIDER_MODELS[LLMProviderName.ZEN_MUSE],
+        temperature=DEFAULT_LLM_TEMPERATURE,
+        streaming=True,
+        max_tokens=ZEN_MUSE_MAX_OUTPUT_TOKENS,
+        api_key=settings.ZEN_MUSE_API_KEY,
+        base_url=settings.ZEN_MUSE_BASE_URL,
+        use_responses_api=True,
+    )
+    # Contrat partagé : profil de fenêtre pour le middleware fractionnaire.
+    llm.profile = {"max_input_tokens": DEFAULT_MAX_TOKENS}
+    return llm.configurable_fields(model=_MODEL_FIELD)
+
+
+@lazy_provider(
     name=LLMProviderKey.CUSTOM,
     required_keys=[SIM_STUB_API_KEY]
     if settings.GAIA_SIM_MODE
@@ -382,6 +416,7 @@ def _get_available_providers() -> dict[LLMProviderName, ProviderLLM]:
     provider_instance_mapping: dict[LLMProviderName, LLMProviderKey] = {
         LLMProviderName.GEMINI: LLMProviderKey.GEMINI,
         LLMProviderName.OPENROUTER: LLMProviderKey.OPENROUTER,
+        LLMProviderName.ZEN_MUSE: LLMProviderKey.ZEN_MUSE,
         LLMProviderName.CUSTOM: LLMProviderKey.CUSTOM,
     }
 
@@ -477,6 +512,8 @@ def register_llm_providers() -> None:
     """Register LLM providers in the lazy loader."""
     init_gemini_llm()
     init_openrouter_llm()
+    # HyperFix : zen-muse en prod (voie par défaut, /responses sur Zen).
+    init_zen_muse_llm()
     # The custom endpoint is a dev/testing-only lane — never registered in
     # production, so DEV_LLM_* vars present in a prod environment can't route
     # real traffic.
