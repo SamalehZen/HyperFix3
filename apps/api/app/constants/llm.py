@@ -186,9 +186,11 @@ DEFAULT_MAX_TOKENS = 1_000_000
 #     budgets meter at the wrong rate (the pricing unit test enforces this)
 #   - it's multimodal if vision/file tools rely on it
 # Default model for every tier and every auxiliary call, served over OpenRouter.
-# Text-only: tool results carrying images are captioned for it rather than shown
-# (see agents/llm/vision/capability.py).
-DEFAULT_MODEL_NAME = "deepseek/deepseek-v4-flash-0731"
+# HyperFix : la lane "openrouter" pointe vers B.AI (OPENROUTER_BASE_URL en dev)
+# avec glm-5.3-flash — repli immédiat quand la voie zen-muse (priorité 1) est
+# en quota free épuisé. Text-only: tool results carrying images are captioned
+# for it rather than shown (see agents/llm/vision/capability.py).
+DEFAULT_MODEL_NAME = "glm-5.3-flash"
 # Stand-in when a call reports no model id. Priced at DEFAULT_PRICING rather
 # than its real rate, so its appearance is an alertable bug, not a benign
 # default — both metering routes log it loudly.
