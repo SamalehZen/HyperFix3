@@ -184,6 +184,9 @@ services:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000/api/v1/}
     environment:
       API_BASE_URL_INTERNAL: ${API_BASE_URL_INTERNAL:-http://gaia-backend:8000/api/v1/}
+      # Next standalone écoute sur le hostname du conteneur par défaut ;
+      # 0.0.0.0 pour que le healthcheck localhost et Caddy atteignent le port.
+      HOSTNAME: 0.0.0.0
     ports:
       - "127.0.0.1:${WEB_HOST_PORT:-3000}:3000"
     restart: unless-stopped
