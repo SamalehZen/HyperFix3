@@ -311,7 +311,8 @@ def init_zen_muse_llm() -> LanguageModelLike:
     )
     # Contrat partagé : profil de fenêtre pour le middleware fractionnaire.
     llm.profile = {"max_input_tokens": DEFAULT_MAX_TOKENS}
-    return llm.configurable_fields(model=_MODEL_FIELD)
+    # ChatOpenAI expose le modèle sous ``model_name`` (ChatOpenRouter : ``model``).
+    return llm.configurable_fields(model_name=_MODEL_FIELD)
 
 
 @lazy_provider(
