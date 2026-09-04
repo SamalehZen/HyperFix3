@@ -27,6 +27,7 @@ from app.constants.llm import (
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL_NAME,
+    DEFAULT_ZEN_MUSE_MODEL_NAME,
     DEV_MODEL_OPTIONS,
     MODEL_FIELD_ID,
     MODEL_KWARGS_FIELD_ID,
@@ -188,6 +189,18 @@ def _reasoning_for(role: AgentRole) -> dict[str, Any]:
 
 
 def _default_lane() -> ModelLane:
+    # HyperFix : le modèle du lane doit être celui du PROVIDER choisi.
+    # openrouter (défaut) → DEFAULT_MODEL_NAME (glm-5.3-flash sur B.AI) ;
+    # zen-muse → son propre modèle (Muse free). Un seul nom partagé serait
+    # envoyé au mauvais endpoint (ModelError "model not supported" sur Zen).
+    if LLMProviderName(DEFAULT_LLM_PROVIDER) == LLMProviderName.ZEN_MUSE:
+        return ModelLane(
+            provider=LLMProviderName.ZEN_MUSE,
+            model=DEFAULT_ZEN_MUSE_MODEL_NAME,
+            reasoning=None,
+            provider_pin=None,
+            max_input_tokens=DEFAULT_MAX_TOKENS,
+        )
     return ModelLane(
         provider=LLMProviderName(DEFAULT_LLM_PROVIDER),
         model=DEFAULT_MODEL_NAME,
