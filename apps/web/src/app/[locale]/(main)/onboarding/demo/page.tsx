@@ -588,6 +588,7 @@ function OnboardingInputDemo() {
         questionIndex={questionIndex}
         draftText={qaDraft}
         draftProfession={qaProfession}
+        draftRayon={null}
         inputRef={qaRef}
         onSubmit={(e) => e.preventDefault()}
         onInputChange={setQaDraft}
@@ -595,6 +596,12 @@ function OnboardingInputDemo() {
           setQaProfession(key != null ? String(key) : null)
         }
         onProfessionInputChange={(value) => setQaProfession(value || null)}
+        onRayonSelect={() => {
+          /* demo stub: not wired on this showcase page */
+        }}
+        onRayonInputChange={() => {
+          /* demo stub: not wired on this showcase page */
+        }}
         onGmailSkip={() => {
           /* demo stub: not wired on this showcase page */
         }}
