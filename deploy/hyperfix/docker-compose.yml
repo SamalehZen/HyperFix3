@@ -153,6 +153,9 @@ services:
       - apparmor:unconfined
     volumes:
       - juicefs_cache:/var/cache/juicefs
+      # HyperFix : workspace local (skills utilisateurs, sessions) — un volume
+      # Docker fait office de "montage" (is_mount() OK) sans JuiceFS/R2.
+      - jfs_local:/mnt/jfs
     restart: unless-stopped
     mem_limit: 1536m
     tty: true
@@ -218,6 +221,8 @@ services:
     command: ["python", "-m", "arq", "app.worker.WorkerSettings", "--custom-log-dict", "app.workers.config.log_config.ARQ_LOG_CONFIG"]
     restart: unless-stopped
     mem_limit: 512m
+    volumes:
+      - jfs_local:/mnt/jfs
     depends_on:
       redis:
         condition: service_healthy
@@ -233,6 +238,7 @@ volumes:
   mongo_data:
   rabbitmq_data:
   juicefs_cache:
+  jfs_local:
 
 networks:
   hyperfix_net:
