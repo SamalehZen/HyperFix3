@@ -1,7 +1,7 @@
 {
-  "name": "GAIA - Your Personal Assistant",
-  "short_name": "GAIA",
-  "description": "GAIA is your personal AI assistant designed to help increase your productivity.",
+  "name": "HyperFix, la fixation — notre raison d'être.",
+  "short_name": "HyperFix",
+  "description": "HyperFix, la fixation — notre raison d'être.",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -16,10 +16,10 @@
       "purpose": "maskable any"
     }
   ],
-  "theme_color": "#00bbff",
-  "background_color": "#000000",
+  "theme_color": "#171717",
+  "background_color": "#171717",
   "display": "standalone",
-  "start_url": "/",
+  "start_url": "/c",
   "scope": "/",
   "orientation": "portrait-primary"
 }
