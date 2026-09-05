@@ -23,7 +23,7 @@ imports lourds sont locaux aux fonctions pour éviter tout cycle d'import
 """
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from cryptography.fernet import Fernet
 
@@ -153,7 +153,25 @@ async def _heal_one(escrow: dict) -> bool:
         if exp is None or exp.replace(tzinfo=exp.tzinfo or timezone.utc) > datetime.now(timezone.utc):
             return True
 
-    # 3. Client DCR : le refresh est lié au client d'origine (séquestré).
+    # 3. Réamorcer la credential avec le refresh séquestré (try_refresh_token
+    # ne lit QUE le store, jamais le séquestre). Access token factice expiré :
+    # le refresh le remplacera par de vrais tokens.
+    try:
+        existing = await token_store.get_credential(integration_id)
+    except Exception:
+        existing = None
+    if existing is None or not getattr(existing, "refresh_token", None):
+        try:
+            await token_store.store_oauth_tokens(
+                integration_id,
+                access_token="heal-pending",
+                refresh_token=_decrypt(escrow["refresh_enc"]),
+                expires_at=datetime.now(timezone.utc) - timedelta(seconds=60),
+            )
+        except Exception as e:
+            log.warning("[gamme-autoconnect] réamorçage impossible", user_id=user_id, error=str(e)[:120])
+            return False
+    # 3b. Surtout NE PAS re-DCR ici : un nouveau client rendrait l'ancien refresh
     # Surtout NE PAS re-DCR ici : un nouveau client rendrait l'ancien refresh
     # invalide. On restaure le DCR séquestré (le test-kill l'avait supprimé).
     escrow_client_id = escrow.get("client_id")
