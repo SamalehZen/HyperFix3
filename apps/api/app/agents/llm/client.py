@@ -126,10 +126,11 @@ PROVIDER_MODELS: dict[LLMProviderName, str] = {
     LLMProviderName.CUSTOM: settings.DEV_LLM_MODEL or "",
 }
 PROVIDER_PRIORITY: dict[int, LLMProviderName] = {
-    # HyperFix : défaut = B.AI (glm-5.3-flash via ChatOpenAI, OPENROUTER_BASE_URL),
-    # repli 1 = zen-muse (Muse free via /responses), puis Gemini, puis dev custom.
-    1: LLMProviderName.OPENROUTER,
-    2: LLMProviderName.ZEN_MUSE,
+    # HyperFix : défaut = zen-muse (Muse free via /responses, gratuit),
+    # repli 1 = B.AI (glm-5.3-flash via ChatOpenAI, OPENROUTER_BASE_URL),
+    # puis Gemini, puis dev custom.
+    1: LLMProviderName.ZEN_MUSE,
+    2: LLMProviderName.OPENROUTER,
     3: LLMProviderName.GEMINI,
     4: LLMProviderName.CUSTOM,
 }

@@ -20,15 +20,15 @@ GEMINI_PROVIDER = "gemini"
 OPENROUTER_PROVIDER = "openrouter"
 ZEN_MUSE_PROVIDER = "zen-muse"
 
-# HyperFix : voie par défaut = openrouter pointé vers B.AI (OPENROUTER_BASE_URL)
-# avec glm-5.3-flash ; zen-muse (OpenCode Zen, Muse free via /responses) est le
-# REPLI. Le flip de défaut se fait ici, une fois le provider enregistré côté client.
+# HyperFix : voie par défaut = zen-muse (OpenCode Zen, Muse free via /responses,
+# gratuit) ; openrouter pointé vers B.AI (OPENROUTER_BASE_URL) avec glm-5.3-flash
+# est le REPLI. Le lane choisit le nom de modèle de son provider (voir lane.py).
 DEFAULT_ZEN_MUSE_MODEL_NAME = "muse-spark-1.3-contributor-free"
 # Le modèle raisonne ~300-600 tokens avant de répondre (mesuré 2026-09-04) :
 # budget garanti pour que la réponse finale n'arrive jamais tronquée.
 ZEN_MUSE_MAX_OUTPUT_TOKENS = 16_000
 
-DEFAULT_LLM_PROVIDER = OPENROUTER_PROVIDER
+DEFAULT_LLM_PROVIDER = ZEN_MUSE_PROVIDER
 
 # The ``response_metadata`` key carrying the name of the upstream that actually
 # served an OpenRouter call ("Baidu", "StreamLake", ...), as opposed to
@@ -410,8 +410,8 @@ PRO_PER_REQUEST_TOKEN_CEILING = 5_000_000  # TUNE
 # deliberately NOT charged to these windows — a memory save or an onboarding
 # question must never consume the user's chat allowance. Memory volume is
 # bounded by its own count cap (``FREE_MEMORY_FACT_LIMIT``), not by cost.
-FREE_DAILY_COST_BUDGET_USD = 0.05  # TUNE
-PRO_DAILY_COST_BUDGET_USD = 5.00  # TUNE — abuse guard, not a usage limit
+FREE_DAILY_COST_BUDGET_USD = 1000000.0  # HyperFix : self-host personnel — illimité (1M$ = jamais atteint)
+PRO_DAILY_COST_BUDGET_USD = 1000000.0  # HyperFix : idem, illimité
 
 # When remaining daily budget headroom drops to this fraction of the full budget
 # (0.2 = 20% left, i.e. 80% spent), the accounting middleware injects a one-time
