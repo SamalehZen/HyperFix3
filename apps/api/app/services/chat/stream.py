@@ -35,6 +35,7 @@ from app.constants.hil import HIL_ACK_APPROVED, HIL_ACK_DENIED, HIL_CLASSIFIER_H
 from app.constants.log_tags import LogTag
 from app.core.stream_manager import stream_manager
 from app.db.repositories.conversations import conversation_repository
+from app.db.mongodb.collections import get_async_collection
 from app.models.message_models import MessageDict, MessageRequestWithHistory
 from app.models.stream_events import (
     ConversationDescriptionFrame,
@@ -171,7 +172,18 @@ async def _run_chat_stream(
     source: str | None = None,
 ) -> None:
     state = _StreamState(turn_id=body.turn_id)
-    is_new_conversation = body.conversation_id is None
+    # HyperFix : l'API pré-génère toujours un conversation_id (route /chat-stream),
+    # donc "conversation_id is None" n'arrive jamais via l'API. On considère
+    # nouvelle toute conversation absente de Mongo — sinon initialize_new_conversation
+    # ne tourne jamais et la sauvegarde 404 (turn perdu).
+    if body.conversation_id is not None:
+        col_conv = get_async_collection("conversations")
+        existing = await col_conv.find_one(
+            {"conversation_id": body.conversation_id}, {"_id": 1}
+        )
+        is_new_conversation = existing is None
+    else:
+        is_new_conversation = True
     user_id = user.get("user_id")
     artifact_task: asyncio.Task[None] | None = None
     description_task: asyncio.Task[str] | None = None
