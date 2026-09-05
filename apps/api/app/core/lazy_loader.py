@@ -659,9 +659,13 @@ class ProviderRegistry:
         concrete provider type is only knowable at the call site. Callers narrow
         with ``cast(TheProvider, ...)`` rather than ``isinstance`` (Type Safety
         item 12) — the registered value is correct by construction.
+
+        HyperFix : un provider absent du registre (ex. posthog non configuré,
+        SILENT) renvoie ``None`` au lieu de lever un KeyError qui tue le tour
+        de chat entier.
         """
         if name not in self._providers:
-            raise KeyError(f"Provider '{name}' not found in registry")
+            return None
         self._check_cyclic_dependency(name)
         loader = self._providers[name]
         for dep in loader.dependencies:
@@ -680,7 +684,7 @@ class ProviderRegistry:
         Returns ``Any`` for the same reason as :meth:`get`; narrow with ``cast``.
         """
         if name not in self._providers:
-            raise KeyError(f"Provider '{name}' not found in registry")
+            return None
         self._check_cyclic_dependency(name)
         loader = self._providers[name]
         for dep in loader.dependencies:
