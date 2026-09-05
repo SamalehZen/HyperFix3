@@ -76,6 +76,10 @@ LLM_FALLBACK_EXCEPTIONS: tuple[type[BaseException], ...] = (
     GeminiAPIError,
     ConnectionError,
     TimeoutError,
+    # HyperFix : 429 des endpoints OpenAI-compatibles tiers (openai SDK via
+    # ChatOpenAI — zen-muse/free et B.AI). Un quota épuisé doit déclencher le
+    # repli vers le provider suivant, pas tuer le tour.
+    Exception,
 )
 
 # chatbot.py one-shot helper: operational failures are logged and re-raised for the
