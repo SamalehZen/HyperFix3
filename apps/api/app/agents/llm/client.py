@@ -310,6 +310,41 @@ def init_openrouter_llm() -> LanguageModelLike:
     strategy=MissingKeyStrategy.WARN,
     warning_message="ZEN_MUSE_API_KEY not configured. The HyperFix zen-muse lane (OpenCode Zen / Responses) will not work.",
 )
+class _ZenMuseChat(ChatOpenAI):
+    """ChatOpenAI + strip des blocs ``reasoning`` de l'historique.
+
+    Les items ``reasoning`` (rs_...) renvoyés par /responses ne peuvent pas être
+    re-joués : côté Zen ils expirent en quelques minutes, et re-envoyer une
+    référence morte fait échouer l'appel en 400 ("Referenced reasoning item ...
+    not found or has expired"). On ne renvoie donc JAMAIS un bloc reasoning
+    d'un tour précédent — seule la réponse texte final ré-entre dans l'input.
+    """
+
+    def _strip_reasoning(self, messages: Any) -> Any:
+        try:
+            cleaned = []
+            for m in messages:
+                content = getattr(m, "content", None)
+                if isinstance(content, list) and any(
+                    isinstance(b, dict) and b.get("type") == "reasoning" for b in content
+                ):
+                    kept = [
+                        b for b in content
+                        if not (isinstance(b, dict) and b.get("type") == "reasoning")
+                    ]
+                    m = m.model_copy(update={"content": kept}) if hasattr(m, "model_copy") else m
+                cleaned.append(m)
+            return cleaned
+        except Exception:
+            return messages
+
+    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+        return super()._generate(self._strip_reasoning(messages), stop, run_manager, **kwargs)
+
+    async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
+        return await super()._agenerate(self._strip_reasoning(messages), stop, run_manager, **kwargs)
+
+
 def init_zen_muse_llm() -> LanguageModelLike:
     """HyperFix : OpenCode Zen via l'API OpenAI Responses (`use_responses_api=True`).
 
@@ -318,7 +353,7 @@ def init_zen_muse_llm() -> LanguageModelLike:
     ``max_output_tokens`` côté wire ; le budget couvre ~300-600 tokens de
     raisonnement avant la réponse finale (mesuré sur muse free).
     """
-    llm = ChatOpenAI(
+    llm = _ZenMuseChat(
         model=PROVIDER_MODELS[LLMProviderName.ZEN_MUSE],
         temperature=DEFAULT_LLM_TEMPERATURE,
         streaming=True,

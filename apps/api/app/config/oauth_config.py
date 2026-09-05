@@ -180,7 +180,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="calendar",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_exqcpnLvCzGJ",
+            auth_config_id="ac_xEBiGLtVKjqm",
             toolkit="GOOGLECALENDAR",
             toolkit_version="20260107_00",
         ),
@@ -273,7 +273,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="docs",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_coVAA1WRsbdK",
+            auth_config_id="ac_4Wc2fearVEzQ",
             toolkit="GOOGLEDOCS",
             toolkit_version="20260107_00",
         ),
@@ -429,7 +429,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="gmail",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_svLPDmjcTVMX",
+            auth_config_id="ac_lKfeBLtZeS2w",
             toolkit="GMAIL",
             toolkit_version="20260107_00",
         ),
@@ -528,7 +528,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="notion",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_DR3IWp9-Kezl",
+            auth_config_id="ac_5jwotwayyufd",
             toolkit="NOTION",
             toolkit_version="20260225_01",
         ),
@@ -688,7 +688,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="sheets",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_18I3fRfWyXDu",
+            auth_config_id="ac_8sW-qzcM895A",
             toolkit="GOOGLESHEETS",
             toolkit_version="20260107_00",
         ),
@@ -772,7 +772,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="linkedin",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_GMeJBELf3z_m",
+            auth_config_id="ac_kkD15j7aVDck",
             toolkit="LINKEDIN",
             toolkit_version="20260225_00",
         ),
@@ -812,7 +812,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="github",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_y2VK4j0ATiZo",
+            auth_config_id="ac_mGwFXuFXZw_u",
             toolkit="GITHUB",
             toolkit_version="20260107_00",
         ),
@@ -960,7 +960,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="reddit",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_7-hfiMVLhcDN",
+            auth_config_id="ac_zJj8CsOWGJ2z",
             toolkit="REDDIT",
             toolkit_version="20260107_00",
         ),
@@ -999,7 +999,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="airtable",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_QPtQsXnIYm4C",
+            auth_config_id="ac_vL5ZHCKidtSH",
             toolkit="AIRTABLE",
             toolkit_version="20260130_00",
         ),
@@ -1038,7 +1038,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="linear",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_mnrcEhhTXPVS",
+            auth_config_id="ac_WtHY6hSJQMjT",
             toolkit="LINEAR",
             toolkit_version="20260107_00",
         ),
@@ -1149,7 +1149,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="slack",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_acm0K6K_kWxY",
+            auth_config_id="ac_4Sll9-MTvG2F",
             toolkit="SLACK",
             toolkit_version="20260204_00",
         ),
@@ -1261,7 +1261,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="hubspot",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_rcnwYp1PRCVr",
+            auth_config_id="ac_LTkC3hpB4srC",
             toolkit="HUBSPOT",
             toolkit_version="20260107_00",
         ),
@@ -1300,7 +1300,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="tasks",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_xPSnVjKyHCDb",
+            auth_config_id="ac_gEiSwMTYe6HJ",
             toolkit="GOOGLETASKS",
             toolkit_version="20260107_00",
         ),
@@ -1339,7 +1339,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="todoist",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_TOjltL3O2kEB",
+            auth_config_id="ac_MCgMpgCrN4V0",
             toolkit="TODOIST",
             toolkit_version="20260227_00",
         ),
@@ -1393,7 +1393,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="teams",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_0kzvAbsi2xu3",
+            auth_config_id="ac_apBoe_gorlWN",
             toolkit="MICROSOFT_TEAMS",
             toolkit_version="20260107_00",
         ),
@@ -1432,7 +1432,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="zoom",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_fABNBG17lf2A",
+            auth_config_id="ac_mofJeZ5oKup8",
             toolkit="ZOOM",
             toolkit_version="20260130_00",
         ),
@@ -1461,7 +1461,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="meet",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_GsHKAmsiGvz1",
+            auth_config_id="ac_Nzpi0V7xLH2M",
             toolkit="GOOGLEMEET",
             toolkit_version="20260107_00",
         ),
@@ -1495,7 +1495,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="maps",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_vy6NqsFlzLuO",
+            auth_config_id="ac_Yz_7P7DdjyOm",
             toolkit="GOOGLE_MAPS",
             toolkit_version="20260107_00",
         ),
@@ -1534,7 +1534,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="asana",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_gF2RuhulKw3I",
+            auth_config_id="ac_L3dcpw8BozHi",
             toolkit="ASANA",
             toolkit_version="20260107_00",
         ),
@@ -1594,7 +1594,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="trello",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_nMjBqOcjLTGW",
+            auth_config_id="ac_RjiMoIAtFSeI",
             toolkit="TRELLO",
             toolkit_version="20260107_00",
         ),
@@ -1633,7 +1633,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="instagram",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_JP45uYkUcjVV",
+            auth_config_id="ac_5YTGctPk1kpR",
             toolkit="INSTAGRAM",
             toolkit_version="20260107_00",
         ),
@@ -1672,7 +1672,7 @@ OAUTH_INTEGRATIONS: list[OAuthIntegration] = [
         short_name="clickup",
         managed_by="composio",
         composio_config=ComposioConfig(
-            auth_config_id="ac_cyT9vqo3pcF3",
+            auth_config_id="ac_utVBHeAUCurE",
             toolkit="CLICKUP",
             toolkit_version="20260107_00",
         ),
