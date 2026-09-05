@@ -55,6 +55,7 @@ from langgraph.store.base import BaseStore
 from langgraph.types import RetryPolicy, Send
 from langgraph_bigtool.tools import get_default_retrieval_tool, get_store_arg
 
+from app.config.settings import settings
 from app.agents.llm.client import LLMInvokeOptions, ainvoke_llm, invoke_llm
 from app.agents.llm.lane import ModelLane
 from app.agents.middleware.completion import (
@@ -190,6 +191,12 @@ def _bind_session_id(
     # Gated on the provider the same way ainvoke_llm gates it: session_id is an
     # OpenRouter routing hint, and Gemini has no stickiness to pin, so sending
     # it there is an unsupported argument on every graph call.
+    # HyperFix : la lane openrouter peut pointer vers un endpoint tiers
+    # (OPENROUTER_BASE_URL, ex. B.AI via ChatOpenAI) — le wire n'est plus
+    # OpenRouter, donc pas de session_id. Les providers non-OpenRouter-wire
+    # (zen-muse /responses, Gemini) sont déjà exclus par _is_openrouter_wire.
+    if settings.OPENROUTER_BASE_URL:
+        return llm_with_tools
     key = _agent_sticky_key(model_configurations, agent_name)
     return llm_with_tools.bind(session_id=key) if key else llm_with_tools
 
