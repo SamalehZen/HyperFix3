@@ -153,7 +153,28 @@ async def _heal_one(escrow: dict) -> bool:
         if exp is None or exp.replace(tzinfo=exp.tzinfo or timezone.utc) > datetime.now(timezone.utc):
             return True
 
-    # 3. Refresh silencieux (pas de navigateur).
+    # 3. Client DCR : le refresh est lié au client d'origine (séquestré).
+    # Surtout NE PAS re-DCR ici : un nouveau client rendrait l'ancien refresh
+    # invalide. On restaure le DCR séquestré (le test-kill l'avait supprimé).
+    escrow_client_id = escrow.get("client_id")
+    if not escrow_client_id:
+        log.error(
+            "[gamme-autoconnect] pas de client_id séquestré — reconnecte-toi une fois via l'UI",
+            user_id=user_id,
+        )
+        return False
+    try:
+        stored = await token_store.get_dcr_client(integration_id)
+        if not stored or stored.get("client_id") != escrow_client_id:
+            await token_store.store_dcr_client(
+                integration_id, {"client_id": escrow_client_id}
+            )
+            log.info("[gamme-autoconnect] DCR restauré depuis le séquestre", user_id=user_id)
+    except Exception as e:
+        log.warning("[gamme-autoconnect] restauration DCR impossible", user_id=user_id, error=str(e)[:120])
+        return False
+
+    # 4. Refresh silencieux (pas de navigateur).
     resolved = await IntegrationResolver.resolve(integration_id)
     if not resolved or not resolved.mcp_config:
         log.warning("[gamme-autoconnect] fiche introuvable après création", user_id=user_id)
