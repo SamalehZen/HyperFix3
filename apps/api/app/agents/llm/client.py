@@ -332,11 +332,17 @@ class _ZenMuseChat(ChatOpenAI):
         except Exception:
             return messages
 
-    def _generate(self, messages, stop=None, run_manager=None, **kwargs):
-        return super()._generate(self._strip_reasoning(messages), stop, run_manager, **kwargs)
+    def _get_request_payload(self, input_, *, stop=None, **kwargs):
+        # Point de passage unique (sync/async/streaming) : on nettoie AVANT
+        # la construction du payload /responses.
+        try:
+            from langchain_core.prompt_values import PromptValue
 
-    async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
-        return await super()._agenerate(self._strip_reasoning(messages), stop, run_manager, **kwargs)
+            msgs = input_.to_messages() if isinstance(input_, PromptValue) else list(input_)
+            input_ = self._strip_reasoning(msgs)
+        except Exception:
+            pass
+        return super()._get_request_payload(input_, stop=stop, **kwargs)
 
 
 @lazy_provider(
