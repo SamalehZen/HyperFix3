@@ -304,12 +304,6 @@ def init_openrouter_llm() -> LanguageModelLike:
     return _openrouter_wire_configurables(llm)
 
 
-@lazy_provider(
-    name=LLMProviderKey.ZEN_MUSE,
-    required_keys=[settings.ZEN_MUSE_API_KEY],
-    strategy=MissingKeyStrategy.WARN,
-    warning_message="ZEN_MUSE_API_KEY not configured. The HyperFix zen-muse lane (OpenCode Zen / Responses) will not work.",
-)
 class _ZenMuseChat(ChatOpenAI):
     """ChatOpenAI + strip des blocs ``reasoning`` de l'historique.
 
@@ -345,6 +339,12 @@ class _ZenMuseChat(ChatOpenAI):
         return await super()._agenerate(self._strip_reasoning(messages), stop, run_manager, **kwargs)
 
 
+@lazy_provider(
+    name=LLMProviderKey.ZEN_MUSE,
+    required_keys=[settings.ZEN_MUSE_API_KEY],
+    strategy=MissingKeyStrategy.WARN,
+    warning_message="ZEN_MUSE_API_KEY not configured. The HyperFix zen-muse lane (OpenCode Zen / Responses) will not work.",
+)
 def init_zen_muse_llm() -> LanguageModelLike:
     """HyperFix : OpenCode Zen via l'API OpenAI Responses (`use_responses_api=True`).
 
