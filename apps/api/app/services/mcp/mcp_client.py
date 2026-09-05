@@ -1794,6 +1794,25 @@ class MCPClient:
                 error_type=type(status_err).__name__,
             )
 
+        # HyperFix : séquestre du refresh pour l'auto-reconnexion du MCP gamme
+        # (gamme_autoconnect). Jamais bloquant pour le callback.
+        try:
+            from app.services.mcp.gamme_autoconnect import record_oauth_success
+
+            await record_oauth_success(
+                user_id=getattr(self, "user_id", None),
+                server_url=getattr(resolved.mcp_config, "server_url", None),
+                refresh_token=new_refresh_token,
+                client_id=client_id,
+                token_endpoint=token_endpoint,
+            )
+        except Exception as escrow_err:
+            log.warning(
+                f"{LogTag.MCP} séquestre gamme impossible (non bloquant)",
+                integration_id=integration_id,
+                error_type=type(escrow_err).__name__,
+            )
+
         # Dispatch the actual MCP connect in the background. Session handshake,
         # tools/list, schema conversion, Mongo tool store, and Chroma indexing
         # easily take 5-15s for servers like posthog (339 tools). The user has

@@ -49,6 +49,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
                     missing_var=missing_var,
                 )
             await unified_startup("main_app")
+            # HyperFix : surveillance auto-reconnexion du MCP gamme (non bloquant).
+            try:
+                from app.services.mcp.gamme_autoconnect import start_gamme_autoconnect
+
+                start_gamme_autoconnect()
+            except Exception:
+                pass
             if settings.POSTHOG_PROJECT_TOKEN and settings.POSTHOG_HOST:
                 posthog_client = providers.get("posthog")
             start_browser_reaper()
