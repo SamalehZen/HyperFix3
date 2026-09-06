@@ -76,9 +76,10 @@ LLM_FALLBACK_EXCEPTIONS: tuple[type[BaseException], ...] = (
     GeminiAPIError,
     ConnectionError,
     TimeoutError,
-    # HyperFix : 429 des endpoints OpenAI-compatibles tiers (openai SDK via
-    # ChatOpenAI — zen-muse/free et B.AI). Un quota épuisé doit déclencher le
-    # repli vers le provider suivant, pas tuer le tour.
+    # HyperFix : erreurs du SDK openai (RateLimitError 429, APIStatusError 4xx/5xx,
+    # APIError) levées par ChatOpenAI sur les endpoints tiers — zen-muse/free et
+    # B.AI. Un quota épuisé ou une 5xx doit déclencher le repli vers le provider
+    # suivant, pas tuer le tour. La MRO de RateLimitError passe par APIError.
     Exception,
 )
 
