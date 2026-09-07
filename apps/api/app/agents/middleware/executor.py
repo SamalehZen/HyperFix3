@@ -288,16 +288,27 @@ class MiddlewareExecutor:
         runtime = self._create_runtime(config, store)
         request = create_model_request(model, state, runtime, tools)
 
+        # Holds the model's own response once it has run, so the fallback below
+        # can tell a middleware that failed *before* the model from one that
+        # failed after it — only the former is safe to retry (same contract as
+        # ``wrap_tool_invocation``'s ``tool_result``).
+        model_response: ModelResponse | None = None
+
         # Build the handler chain from inside out
         async def final_handler(req: ModelRequest) -> ModelResponse:
             """Innermost handler - actually calls the model."""
+            nonlocal model_response
             # Build messages list: prepend system_message if present, then messages
             messages_to_send: list[AnyMessage] = []
             if req.system_message:
                 messages_to_send.append(req.system_message)
             messages_to_send.extend(req.messages)
+            # Provider errors (429 quota, 5xx, ...) are handled INSIDE
+            # ``invoke_fn`` (``ainvoke_llm``: retry + provider fallback) — this
+            # layer must not swallow them before the fallback runs.
             response = await invoke_fn(messages_to_send)
-            return ModelResponse(result=[response])
+            model_response = ModelResponse(result=[response])
+            return model_response
 
         # Wrap with middleware (reverse order so first middleware is outermost)
         current_handler: ModelCallHandler = final_handler
@@ -344,15 +355,39 @@ class MiddlewareExecutor:
                 return message
 
             return AIMessage(content=str(getattr(message, "content", message)))
+        except GraphBubbleUp:
+            # Same control-flow guard as ``wrap_tool_invocation``: an interrupt
+            # raised inside a wrap_model_call hook must checkpoint and pause —
+            # the generic handler below would swallow it and then run the model
+            # via the direct-invocation fallback, skipping the gate.
+            raise
         except asyncio.CancelledError:
             raise
         except Exception as e:
             log.error(
                 f"{LogTag.AGENT} Middleware wrap_model_call chain failed",
                 error_type=type(e).__name__,
+                error=str(e),
             )
-            # Fallback to direct invocation
-            return await invoke_fn(state.get("messages", []))
+            # The model already answered — re-invoking would spend a second
+            # call (retry + fallback included) for nothing. Ship its response
+            # and lose only the post-model middleware's transforms.
+            if model_response is not None:
+                message = model_response.result[0]
+                if isinstance(message, AIMessage):
+                    return message
+                return AIMessage(content=str(getattr(message, "content", message)))
+            # Nothing ran yet: a pre-model middleware broke, so invoke directly
+            # through ``invoke_fn`` (retry + provider fallback included),
+            # rebuilt from the REQUEST — not raw state — so the model sees the
+            # same prompt the chain would have sent (system message +
+            # middleware edits included). If this raises too, both providers
+            # are down: let it propagate loud, there is nothing left to try.
+            messages_to_send: list[AnyMessage] = []
+            if request.system_message:
+                messages_to_send.append(request.system_message)
+            messages_to_send.extend(request.messages)
+            return await invoke_fn(messages_to_send)
 
     async def wrap_tool_invocation(
         self,

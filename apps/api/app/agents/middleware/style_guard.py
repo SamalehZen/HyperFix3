@@ -33,6 +33,7 @@ drop. The regression is recorded on the wide event instead.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+import re
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain.agents.middleware.types import ModelRequest, ModelResponse
@@ -69,6 +70,16 @@ from shared.py.wide_events import log
 
 ModelCallHandler = Callable[[ModelRequest], Awaitable[ModelResponse]]
 
+#: Channels whose clients render markdown and OpenUI components — the only
+#: ones whose prompt carries the Rich Chat section.
+_RENDERABLE_SOURCES = frozenset({"web", "mobile", "desktop"})
+
+#: A draft is a structured rich reply (report, recap, analysis), not
+#: conversational chat, when it carries markdown headings, a markdown table
+#: (header + separator at minimum), or an OpenUI component fence.
+_RICH_HEADING_PATTERN = re.compile(r"^#{1,3} ", re.M)
+_RICH_TABLE_ROW_PATTERN = re.compile(r"^\s*\|.*\|\s*$", re.M)
+
 
 def build_correction_note(text: str) -> str:
     """The rewrite instruction for a draft, naming every tell it actually used."""
@@ -85,6 +96,31 @@ def build_correction_note(text: str) -> str:
 
 def _fired_detectors(score: AiIsmScore) -> list[str]:
     return sorted(detector for detector in STYLE_GUARD_RULES if getattr(score, detector))
+
+
+def _is_rich_draft(text: str) -> bool:
+    """Whether ``text`` is a structured rich reply rather than chat.
+
+    Headings, tables, and component fences are the medium of a recap or a
+    report; bold inside them is formatting, not a tell. A one-liner with a
+    stray ``**bold**`` is still chat and still scores.
+    """
+    if ":::openui" in text:
+        return True
+    if _RICH_HEADING_PATTERN.search(text) is not None:
+        return True
+    return len(_RICH_TABLE_ROW_PATTERN.findall(text)) >= 2
+
+
+def _source_is_renderable(configurable: AgentConfigurable) -> bool:
+    """Whether this turn serves a channel that renders markdown.
+
+    Unknown surfaces default to renderable: ``get_comms_static_prompt``
+    serves them the web prompt (Rich Chat section included), so the guard
+    must judge the draft by the same rules the model wrote it under.
+    """
+    source = resolve_channel(configurable)
+    return source is None or str(source).strip().lower() in _RENDERABLE_SOURCES
 
 
 class StyleGuardMiddleware(AgentMiddleware):
@@ -113,6 +149,24 @@ class StyleGuardMiddleware(AgentMiddleware):
         # A workflow delivery has no live client to retract from and nobody
         # watching it stream, so the second call would buy nothing.
         if configurable.get("execution_mode") == "background":
+            return response
+
+        # A structured rich reply (recap, report, analysis with headings,
+        # tables, or charts) is content-creation output: bold and headings
+        # are its medium, not tells. Scoring it would rewrite every rich
+        # answer back to plain text and spend a second model call doing it.
+        # Text-only platforms keep the strict guard: their prompt bans bold
+        # and tables outright, so rich markup there is a real violation.
+        if _is_rich_draft(text) and _source_is_renderable(configurable):
+            log.set_ns(
+                "style_guard",
+                violations_before=0,
+                violations_after=0,
+                regenerated=False,
+                regressed=False,
+                detectors=[],
+                rich_skipped=True,
+            )
             return response
 
         before = score_reply(text)

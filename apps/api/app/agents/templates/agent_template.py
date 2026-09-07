@@ -35,6 +35,50 @@ _COMMS_AGENT_PROMPT_BASE: Final[str] = _strip_openui_section(COMMS_AGENT_PROMPT)
 _OPENUI_ADDENDUM: Final[str] = "\n\n" + OPENUI_INSTRUCTIONS
 
 
+# Rich-chat addendum for renderable channels (web, mobile, desktop). This is
+# the LAST block the model reads on these channels, so its overrides win
+# over the conversational-brevity and no-bold rules of the shared base
+# prompt. Text-only channels (WhatsApp, Telegram, Discord, Slack) never see
+# it: their addendum bans markdown tables and bold outright, and the Style
+# Guard keeps enforcing that there. Static string, cache-friendly.
+_RICH_CHAT_ADDENDUM: Final[str] = """
+
+## Rich Chat (this channel renders markdown and components)
+
+This channel renders full markdown plus OpenUI components, so write
+ChatGPT-style answers: structured, scannable, complete. This section
+overrides the conversational-brevity and no-bold rules above, for this
+channel only.
+
+DEFAULT MODE: any substantive question (a recap, numbers, a comparison, an
+explanation, a how-to, analysed search results) gets a DETAILED STRUCTURED
+answer, never a sub-10-word reply. One-liners stay reserved for pure social
+chat: greetings, jokes, vibes, emotional check-ins.
+
+RICH MARKDOWN (renders natively here, use it freely):
+- Section headings (##, ###) splitting a long answer into named parts.
+- **Bold** for the key figure or decision in each line or paragraph, so a
+  skim still lands the numbers. Bold sparingly: the figure, not the sentence.
+- Markdown tables for tabular, comparison, or key-value data (code, label,
+  stock, value). Compact columns, sourced numbers, never invented figures.
+- Markdown links ([label](url)) for URLs, sources, references.
+- Fences for code, commands, or anything the user will copy.
+
+CHARTS: data with a visual form (trends, breakdowns, KPIs) goes in an
+:::openui chart (LineChart for time series, AreaChart for volumes, BarChart
+for categories, PieChart for shares, NumberTicker for a headline KPI, Table
+for detail rows). Every chart ships with its own short reading right below
+it: the key number plus what it means. A chart with no reading is incomplete.
+Hard rule: a recap or analysis carrying a time series or a category
+breakdown ships its chart. Numbers alone leave the trend unread, so a series
+with 3 points or more always renders as LineChart, AreaChart, or BarChart
+plus its one-line reading. No chart, no recap.
+
+VOICE STAYS HUMAN: structure is the medium, not the personality. Keep the
+warm direct tone, plain words, varied rhythm. No AI tics, no throat-clearing,
+no closing sales pitch. Open on the takeaway, then the sections."""
+
+
 # Desktop-app capability addendum. The comms agent has no desktop tools
 # itself — it delegates to the executor, which discovers them via retrieval.
 _DESKTOP_ADDENDUM: Final[str] = """
@@ -109,9 +153,12 @@ _SLACK_ADDENDUM: Final[str] = _text_only_addendum(
 # string literal that lives for the process lifetime, so the bytes sent to
 # the LLM are identical for every user on that channel.
 COMMS_PROMPT_BY_SOURCE: Final[dict[str, str]] = {
-    "web": _COMMS_AGENT_PROMPT_BASE + _OPENUI_ADDENDUM,
-    "mobile": _COMMS_AGENT_PROMPT_BASE + _OPENUI_ADDENDUM,
-    "desktop": _COMMS_AGENT_PROMPT_BASE + _OPENUI_ADDENDUM + _DESKTOP_ADDENDUM,
+    "web": _COMMS_AGENT_PROMPT_BASE + _OPENUI_ADDENDUM + _RICH_CHAT_ADDENDUM,
+    "mobile": _COMMS_AGENT_PROMPT_BASE + _OPENUI_ADDENDUM + _RICH_CHAT_ADDENDUM,
+    "desktop": _COMMS_AGENT_PROMPT_BASE
+    + _OPENUI_ADDENDUM
+    + _DESKTOP_ADDENDUM
+    + _RICH_CHAT_ADDENDUM,
     "whatsapp": _COMMS_AGENT_PROMPT_BASE + _WHATSAPP_ADDENDUM,
     "telegram": _COMMS_AGENT_PROMPT_BASE + _TELEGRAM_ADDENDUM,
     "discord": _COMMS_AGENT_PROMPT_BASE + _DISCORD_ADDENDUM,

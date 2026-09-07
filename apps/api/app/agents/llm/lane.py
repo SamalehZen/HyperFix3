@@ -24,6 +24,7 @@ from app.config.rate_limits import RateLimitPeriod, get_reset_time, get_time_win
 from app.config.settings import settings
 from app.constants.cache import COST_BUDGET_NOTIFIED_KEY
 from app.constants.llm import (
+    DEFAULT_EXP_LAB_MODEL_NAME,
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL_NAME,
@@ -191,12 +192,21 @@ def _reasoning_for(role: AgentRole) -> dict[str, Any]:
 def _default_lane() -> ModelLane:
     # HyperFix : le modèle du lane doit être celui du PROVIDER choisi.
     # openrouter (défaut) → DEFAULT_MODEL_NAME (glm-5.3-flash sur B.AI) ;
-    # zen-muse → son propre modèle (Muse free). Un seul nom partagé serait
-    # envoyé au mauvais endpoint (ModelError "model not supported" sur Zen).
+    # zen-muse → son propre modèle (Muse) ; experiential → DeepSeek 0731 figé.
+    # Un seul nom partagé serait envoyé au mauvais endpoint (ModelError
+    # "model not supported" sur Zen).
     if LLMProviderName(DEFAULT_LLM_PROVIDER) == LLMProviderName.ZEN_MUSE:
         return ModelLane(
             provider=LLMProviderName.ZEN_MUSE,
             model=DEFAULT_ZEN_MUSE_MODEL_NAME,
+            reasoning=None,
+            provider_pin=None,
+            max_input_tokens=DEFAULT_MAX_TOKENS,
+        )
+    if LLMProviderName(DEFAULT_LLM_PROVIDER) == LLMProviderName.EXPERIENTIAL:
+        return ModelLane(
+            provider=LLMProviderName.EXPERIENTIAL,
+            model=DEFAULT_EXP_LAB_MODEL_NAME,
             reasoning=None,
             provider_pin=None,
             max_input_tokens=DEFAULT_MAX_TOKENS,

@@ -618,3 +618,101 @@ class TestCorrectionNoteVocabulary:
         from app.constants.style_guard import STYLE_GUARD_RULES
 
         assert set(STYLE_GUARD_RULES) == set(VIOLATION_FIELDS)
+
+
+RICH_RECAP_DRAFT = """## Recap du 6 septembre
+
+**Constat :** 12 negatifs aujourd'hui, stables sur 7 jours.
+
+| Code | Libelle | Stock |
+|---|---|---|
+| A123 | Lait demi-ecreme | -4 |
+| B456 | Riz parfume | -2 |
+"""
+
+TABLE_ONLY_DRAFT = """voici le top des negatifs :
+
+| Code | Libelle | Stock |
+|---|---|---|
+| A123 | Lait | -4 |
+"""
+
+OPENUI_DRAFT = """voici l'evolution :
+
+:::openui
+root = LineChart(["lun", "mar", "mer"], [Series("Negatifs", [12, 9, 12])])
+:::
+
+12 negatifs aujourd'hui, stables."""
+
+BOLD_ONE_LINER = "tonight was **great**, on fait ca demain ?"
+
+
+@pytest.mark.unit
+class TestRichDraftCarveOut:
+    """Structured rich replies skip the guard on renderable channels.
+
+    With MAX_VIOLATIONS at zero, every **bold** figure would otherwise be
+    rewritten out, which would undo the Rich Chat prompt section one extra
+    model call at a time.
+    """
+
+    async def test_a_rich_recap_draft_is_kept_as_is(
+        self, emitted_frames: list[dict[str, Any]], interactive_run: RunnableConfig
+    ) -> None:
+        handler = _ScriptedHandler(_draft(RICH_RECAP_DRAFT, "m1"))
+
+        response = await StyleGuardMiddleware().awrap_model_call(_request(), handler)
+
+        assert len(handler.requests) == 1
+        assert response.result[0].id == "m1"
+        assert response.result[0].text == RICH_RECAP_DRAFT
+        assert emitted_frames == []
+
+    async def test_a_table_only_draft_is_kept(
+        self, emitted_frames: list[dict[str, Any]], interactive_run: RunnableConfig
+    ) -> None:
+        handler = _ScriptedHandler(_draft(TABLE_ONLY_DRAFT, "m1"))
+
+        await StyleGuardMiddleware().awrap_model_call(_request(), handler)
+
+        assert len(handler.requests) == 1
+
+    async def test_an_openui_draft_is_kept(
+        self, emitted_frames: list[dict[str, Any]], interactive_run: RunnableConfig
+    ) -> None:
+        handler = _ScriptedHandler(_draft(OPENUI_DRAFT, "m1"))
+
+        await StyleGuardMiddleware().awrap_model_call(_request(), handler)
+
+        assert len(handler.requests) == 1
+
+    async def test_a_rich_draft_on_whatsapp_is_still_rewritten(
+        self, emitted_frames: list[dict[str, Any]]
+    ) -> None:
+        """Text-only platforms ban bold and tables outright, so rich markup
+        there is a real violation, not a medium."""
+        config: RunnableConfig = {
+            "configurable": {
+                "user_id": "u1",
+                "execution_mode": "interactive",
+                "conversation_source": "whatsapp",
+            }
+        }
+        handler = _ScriptedHandler(_draft(RICH_RECAP_DRAFT, "m1"), _draft("plain rewrite", "m2"))
+
+        with patch("app.agents.middleware.style_guard.current_run_config", return_value=config):
+            response = await StyleGuardMiddleware().awrap_model_call(_request(), handler)
+
+        assert len(handler.requests) == 2
+        assert response.result[0].id == "m2"
+
+    async def test_a_bold_chat_one_liner_is_still_rewritten(
+        self, emitted_frames: list[dict[str, Any]], interactive_run: RunnableConfig
+    ) -> None:
+        """The carve-out keys on structure, not on bold alone: chat stays chat."""
+        handler = _ScriptedHandler(_draft(BOLD_ONE_LINER, "m1"), _draft("tonight was great", "m2"))
+
+        await StyleGuardMiddleware().awrap_model_call(_request(), handler)
+
+        assert len(handler.requests) == 2

@@ -4,8 +4,10 @@ from enum import Enum
 
 from langchain_core.runnables import RunnableConfig
 
+from app.agents.llm.client import PROVIDER_MODELS
 from app.agents.llm.lane import ModelLane
 from app.agents.llm.model_catalog import get_openrouter_catalog
+from app.agents.llm.types import LLMProviderName
 from app.constants.llm import (
     DEFAULT_LLM_PROVIDER,
     DEFAULT_MODEL_NAME,
@@ -33,7 +35,10 @@ def active_lane(config: RunnableConfig) -> tuple[str, str]:
     """The (provider, model) this run will actually call."""
     lane = ModelLane.from_configurable(agent_configurable(config).get(LANE_FIELD_ID))
     if lane is None:
-        return DEFAULT_LLM_PROVIDER, DEFAULT_MODEL_NAME
+        # Le modèle du PROVIDER par défaut, pas DEFAULT_MODEL_NAME (qui est le
+        # modèle du lane openrouter/B.AI) : envoyer glm sur experiential ou
+        # deepseek sur Zen serait un ModelError garanti.
+        return DEFAULT_LLM_PROVIDER, PROVIDER_MODELS[LLMProviderName(DEFAULT_LLM_PROVIDER)]
     return lane.provider, lane.model or DEFAULT_MODEL_NAME
 
 
