@@ -211,6 +211,14 @@ class CommonSettings(BaseAppSettings):
     ZEN_MUSE_BASE_URL: str = "https://opencode.ai/zen/v1"
     ZEN_MUSE_API_KEY: str = ""
     ZEN_MUSE_MODEL: str = "muse-spark-1.3-contributor-free"
+
+    # ----------------------------------------------
+    # HyperFix : Experimental Labs / DeepSeek via /chat/completions (prod).
+    # Client ChatOpenAI standard (pas de Responses API, pas de reasoning wire).
+    # ----------------------------------------------
+    EXP_LAB_BASE_URL: str = "https://api.experientiallabs.ai/v1"
+    EXP_LAB_API_KEY: str = ""
+    EXP_LAB_MODEL: str = "deepseek-v4-flash-0731"
     # Default model for every dev request that doesn't pick one in the chat-header
     # selector — any DEV_MODEL_OPTIONS key from app/constants/llm.py ("custom" =
     # the endpoint above). An explicit selector choice still wins.

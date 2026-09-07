@@ -42,12 +42,14 @@ from app.config.settings import settings
 from app.constants.llm import (
     AUX_MODEL_NAME,
     AUX_SESSION_SUFFIX,
+    DEFAULT_EXP_LAB_MODEL_NAME,
     DEFAULT_GEMINI_MODEL_NAME,
     DEFAULT_LLM_TEMPERATURE,
     DEFAULT_MAX_TOKENS,
     DEFAULT_MODEL_NAME,
     DEFAULT_ZEN_MUSE_MODEL_NAME,
     DEV_LLM_MAX_OUTPUT_TOKENS,
+    EXP_LAB_MAX_OUTPUT_TOKENS,
     HELPER_MAX_OUTPUT_TOKENS,
     LLM_INVOKE_TIMEOUT_SECONDS,
     LLM_RETRY_MAX_ATTEMPTS,
@@ -119,20 +121,24 @@ def with_llm_retry(runnable: Runnable, *, max_attempts: int = LLM_RETRY_MAX_ATTE
 PROVIDER_MODELS: dict[LLMProviderName, str] = {
     LLMProviderName.GEMINI: DEFAULT_GEMINI_MODEL_NAME,
     LLMProviderName.OPENROUTER: DEFAULT_MODEL_NAME,
-    # HyperFix : OpenCode Zen / Muse (API Responses), voie par défaut.
+    # HyperFix : OpenCode Zen / Muse (API Responses), voie de dernier recours
+    # (free bloqué hors OpenCode depuis le 07/09/2026).
     LLMProviderName.ZEN_MUSE: settings.ZEN_MUSE_MODEL or DEFAULT_ZEN_MUSE_MODEL_NAME,
+    # HyperFix : Experimental Labs / DeepSeek, voie par défaut.
+    LLMProviderName.EXPERIENTIAL: settings.EXP_LAB_MODEL or DEFAULT_EXP_LAB_MODEL_NAME,
     # The env-defined custom dev endpoint; empty when unset — the provider is
     # only registered in development with all DEV_LLM_* settings present.
     LLMProviderName.CUSTOM: settings.DEV_LLM_MODEL or "",
 }
 PROVIDER_PRIORITY: dict[int, LLMProviderName] = {
-    # HyperFix : défaut = zen-muse (Muse free via /responses, gratuit),
+    # HyperFix : défaut = experiential (DeepSeek 0731 figé, testé OK 07/09),
     # repli 1 = B.AI (glm-5.3-flash via ChatOpenAI, OPENROUTER_BASE_URL),
-    # puis Gemini, puis dev custom.
-    1: LLMProviderName.ZEN_MUSE,
+    # puis Gemini, puis dev custom, puis zen-muse en dernier recours.
+    1: LLMProviderName.EXPERIENTIAL,
     2: LLMProviderName.OPENROUTER,
     3: LLMProviderName.GEMINI,
     4: LLMProviderName.CUSTOM,
+    5: LLMProviderName.ZEN_MUSE,
 }
 
 
@@ -375,6 +381,34 @@ def init_zen_muse_llm() -> LanguageModelLike:
 
 
 @lazy_provider(
+    name=LLMProviderKey.EXPERIENTIAL,
+    required_keys=[settings.EXP_LAB_API_KEY],
+    strategy=MissingKeyStrategy.WARN,
+    warning_message="EXP_LAB_API_KEY not configured. The HyperFix experiential lane (Experimental Labs / DeepSeek via /chat/completions) will not work.",
+)
+def init_experiential_llm() -> LanguageModelLike:
+    """HyperFix : Experimental Labs via /chat/completions OpenAI-compatibles.
+
+    ChatOpenAI standard (comme la branche B.AI d'``init_openrouter_llm`` : pas
+    de Responses API, pas de reasoning wire, pas d'app attribution). DeepSeek
+    raisonne par défaut sans paramètre ; le test du 07/09/2026 a validé le
+    function-calling (``gamme_article`` émis avec les bons arguments).
+    """
+    llm = ChatOpenAI(
+        model=PROVIDER_MODELS[LLMProviderName.EXPERIENTIAL],
+        temperature=DEFAULT_LLM_TEMPERATURE,
+        streaming=True,
+        max_tokens=EXP_LAB_MAX_OUTPUT_TOKENS,
+        api_key=settings.EXP_LAB_API_KEY,
+        base_url=settings.EXP_LAB_BASE_URL,
+    )
+    # Contrat partagé : profil de fenêtre pour le middleware fractionnaire.
+    llm.profile = {"max_input_tokens": DEFAULT_MAX_TOKENS}
+    # ChatOpenAI expose le modèle sous ``model_name`` (ChatOpenRouter : ``model``).
+    return llm.configurable_fields(model_name=_MODEL_FIELD)
+
+
+@lazy_provider(
     name=LLMProviderKey.CUSTOM,
     required_keys=[SIM_STUB_API_KEY]
     if settings.GAIA_SIM_MODE
@@ -477,6 +511,7 @@ def _get_available_providers() -> dict[LLMProviderName, ProviderLLM]:
         LLMProviderName.GEMINI: LLMProviderKey.GEMINI,
         LLMProviderName.OPENROUTER: LLMProviderKey.OPENROUTER,
         LLMProviderName.ZEN_MUSE: LLMProviderKey.ZEN_MUSE,
+        LLMProviderName.EXPERIENTIAL: LLMProviderKey.EXPERIENTIAL,
         LLMProviderName.CUSTOM: LLMProviderKey.CUSTOM,
     }
 
@@ -572,8 +607,10 @@ def register_llm_providers() -> None:
     """Register LLM providers in the lazy loader."""
     init_gemini_llm()
     init_openrouter_llm()
-    # HyperFix : zen-muse en prod (voie par défaut, /responses sur Zen).
+    # HyperFix : zen-muse en dernier recours (/responses sur Zen, free bloqué
+    # hors OpenCode) ; experiential (DeepSeek 0731) est la voie par défaut.
     init_zen_muse_llm()
+    init_experiential_llm()
     # The custom endpoint is a dev/testing-only lane — never registered in
     # production, so DEV_LLM_* vars present in a prod environment can't route
     # real traffic.

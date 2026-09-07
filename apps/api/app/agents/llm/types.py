@@ -17,6 +17,7 @@ class LLMProviderName(StrEnum):
     GEMINI = "gemini"
     OPENROUTER = "openrouter"
     ZEN_MUSE = "zen-muse"
+    EXPERIENTIAL = "experiential"
     CUSTOM = "custom"
 
 
@@ -46,6 +47,7 @@ class LLMProviderKey(StrEnum):
     GEMINI = "gemini_llm"
     OPENROUTER = "openrouter_llm"
     ZEN_MUSE = "zen_muse_llm"
+    EXPERIENTIAL = "experiential_llm"
     CUSTOM = "custom_llm"
 
 

@@ -19,16 +19,24 @@ LANE_FIELD_ID = "lane"
 GEMINI_PROVIDER = "gemini"
 OPENROUTER_PROVIDER = "openrouter"
 ZEN_MUSE_PROVIDER = "zen-muse"
+EXPERIENTIAL_PROVIDER = "experiential"
 
-# HyperFix : voie par défaut = zen-muse (OpenCode Zen, Muse free via /responses,
-# gratuit) ; openrouter pointé vers B.AI (OPENROUTER_BASE_URL) avec glm-5.3-flash
-# est le REPLI. Le lane choisit le nom de modèle de son provider (voir lane.py).
+# HyperFix : voie par défaut = experiential (Experimental Labs, DeepSeek V4
+# Flash figé 0731 via /chat/completions, testé OK avec function-calling le
+# 07/09/2026) ; openrouter pointé vers B.AI (OPENROUTER_BASE_URL) avec
+# glm-5.3-flash est le REPLI ; zen-muse (OpenCode Zen free) est BLOQUÉ hors
+# OpenCode depuis le 07/09/2026 (400 MissingSessionID) et reste en dernier
+# recours. Le lane choisit le nom de modèle de son provider (voir lane.py).
+DEFAULT_EXP_LAB_MODEL_NAME = "deepseek-v4-flash-0731"
+# DeepSeek raisonne par défaut ; 16k couvre ~300-600 tokens de raisonnement
+# avant la réponse finale (même budget que l'ancien lane zen-muse).
+EXP_LAB_MAX_OUTPUT_TOKENS = 16_000
 DEFAULT_ZEN_MUSE_MODEL_NAME = "muse-spark-1.3-contributor-free"
 # Le modèle raisonne ~300-600 tokens avant de répondre (mesuré 2026-09-04) :
 # budget garanti pour que la réponse finale n'arrive jamais tronquée.
 ZEN_MUSE_MAX_OUTPUT_TOKENS = 16_000
 
-DEFAULT_LLM_PROVIDER = ZEN_MUSE_PROVIDER
+DEFAULT_LLM_PROVIDER = EXPERIENTIAL_PROVIDER
 
 # The ``response_metadata`` key carrying the name of the upstream that actually
 # served an OpenRouter call ("Baidu", "StreamLake", ...), as opposed to
