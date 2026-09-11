@@ -22,7 +22,7 @@
     "electron-liquid-glass": "^1.1.1",
     "electron-updater": "^6.8.9",
     "v8-compile-cache": "^2.4.0",
-    "wait-on": "^8.0.5"
+    "wait-on": "^9.1.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
